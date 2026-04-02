@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import type { Card, StoreBonus } from '../types'
-import { importCardFromUrl, importCardFromHtml, getClaudeApiKey } from '../lib/cardImport'
+import { importCardFromUrl, importCardFromHtml } from '../lib/cardImport'
 import type { CardImportResult } from '../lib/cardImport'
+import { useApiProvider } from '../lib/apiProviderContext'
 
 const DEFAULT_BANK_URLS: Record<string, string> = {
   '國泰 Cube': 'https://www.cathaybk.com.tw/cathaybk/personal/product/credit-card/cards/cube/',
@@ -18,10 +19,11 @@ interface Props {
   card: Card | null
   onSave: (card: Card) => void
   onCancel: () => void
-  onNeedApiKey?: () => void
 }
 
-export default function CardForm({ card, onSave, onCancel, onNeedApiKey }: Props) {
+export default function CardForm({ card, onSave, onCancel }: Props) {
+  const { provider, apiKey } = useApiProvider()
+
   const [name, setName] = useState(card?.name ?? '')
   const [bankUrl, setBankUrl] = useState(card?.bankUrl ?? '')
   const [baseRate, setBaseRate] = useState(String(card?.baseRate ?? ''))
@@ -32,17 +34,14 @@ export default function CardForm({ card, onSave, onCancel, onNeedApiKey }: Props
   const [newBonusRate, setNewBonusRate] = useState('')
   const [newBonusCap, setNewBonusCap] = useState('')
 
-  // Task 2.1: import URL panel state
   const [showImportPanel, setShowImportPanel] = useState(false)
   const [importUrl, setImportUrl] = useState('')
-  // Task 2.2: manual HTML fallback state
   const [showHtmlFallback, setShowHtmlFallback] = useState(false)
   const [manualHtml, setManualHtml] = useState('')
   const [importing, setImporting] = useState(false)
   const [importError, setImportError] = useState<string | null>(null)
   const [missingFields, setMissingFields] = useState<string[]>([])
 
-  // Auto-fill bank URL on name change
   function handleNameChange(v: string) {
     setName(v)
     if (!bankUrl) {
@@ -67,21 +66,12 @@ export default function CardForm({ card, onSave, onCancel, onNeedApiKey }: Props
     setBonuses(prev => prev.filter((_, i) => i !== idx))
   }
 
-  // Tasks 5.2, 5.3: pre-fill form from import result
   function applyImportResult(result: CardImportResult) {
     const missing: string[] = []
-    if (result.cardName) setName(result.cardName)
-    else missing.push('卡片名稱')
-
-    if (result.baseRate !== null) setBaseRate(String(result.baseRate))
-    else missing.push('海外回饋率')
-
-    if (result.capType) setCapType(result.capType)
-    else missing.push('上限類型')
-
-    if (result.capValue !== null) setCapAmount(String(result.capValue))
-    else missing.push('每月上限金額')
-
+    if (result.cardName) setName(result.cardName); else missing.push('卡片名稱')
+    if (result.baseRate !== null) setBaseRate(String(result.baseRate)); else missing.push('海外回饋率')
+    if (result.capType) setCapType(result.capType); else missing.push('上限類型')
+    if (result.capValue !== null) setCapAmount(String(result.capValue)); else missing.push('每月上限金額')
     if (result.storeRules.length > 0) {
       setBonuses(result.storeRules.map(r => ({
         storeName: r.storeName,
@@ -89,7 +79,6 @@ export default function CardForm({ card, onSave, onCancel, onNeedApiKey }: Props
         cap: r.spendCap,
       })))
     }
-
     setMissingFields(missing)
     setShowImportPanel(false)
     setShowHtmlFallback(false)
@@ -98,55 +87,47 @@ export default function CardForm({ card, onSave, onCancel, onNeedApiKey }: Props
     setImportError(null)
   }
 
-  // Task 5.2: handle URL import
+  function handleImportError(err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (msg === 'INVALID_API_KEY') {
+      setImportError('API Key 無效，請至設定頁面重新輸入。')
+    } else {
+      setImportError(msg)
+    }
+  }
+
   async function handleUrlImport() {
     if (!importUrl.trim()) return
-    if (!getClaudeApiKey()) {
-      onNeedApiKey?.()
+    // Task 4.3: check key from context
+    if (!apiKey) {
+      setImportError('請先至「設定」頁面輸入 API Key 才能使用自動匯入。')
       return
     }
     setImporting(true)
     setImportError(null)
     try {
-      const result = await importCardFromUrl(importUrl.trim())
+      const result = await importCardFromUrl(importUrl.trim(), apiKey, provider)
       applyImportResult(result)
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      if (msg === 'NO_API_KEY') {
-        onNeedApiKey?.()
-        setShowImportPanel(false)
-      } else if (msg === 'INVALID_API_KEY') {
-        setImportError('Claude API Key 無效，請至設定頁面更新。')
-      } else {
-        setImportError(msg)
-      }
+      handleImportError(err)
     } finally {
       setImporting(false)
     }
   }
 
-  // Task 5.4: handle manual HTML fallback
   async function handleHtmlImport() {
     if (!manualHtml.trim()) return
-    if (!getClaudeApiKey()) {
-      onNeedApiKey?.()
+    if (!apiKey) {
+      setImportError('請先至「設定」頁面輸入 API Key 才能使用自動匯入。')
       return
     }
     setImporting(true)
     setImportError(null)
     try {
-      const result = await importCardFromHtml(manualHtml)
+      const result = await importCardFromHtml(manualHtml, apiKey, provider)
       applyImportResult(result)
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      if (msg === 'NO_API_KEY') {
-        onNeedApiKey?.()
-        setShowImportPanel(false)
-      } else if (msg === 'INVALID_API_KEY') {
-        setImportError('Claude API Key 無效，請至設定頁面更新。')
-      } else {
-        setImportError(msg)
-      }
+      handleImportError(err)
     } finally {
       setImporting(false)
     }
@@ -172,7 +153,7 @@ export default function CardForm({ card, onSave, onCancel, onNeedApiKey }: Props
         <h1 className="text-lg font-semibold text-gray-900">{card ? '編輯卡片' : '新增卡片'}</h1>
       </div>
 
-      {/* Task 2.1: Import from URL panel */}
+      {/* Import from URL panel (new cards only) */}
       {!card && (
         <div className="mb-4">
           {!showImportPanel ? (
@@ -186,9 +167,16 @@ export default function CardForm({ card, onSave, onCancel, onNeedApiKey }: Props
           ) : (
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-blue-800">從活動網址匯入</p>
+                <p className="text-sm font-medium text-blue-800">從活動網址匯入（{provider === 'gemini' ? 'Gemini' : 'Claude'}）</p>
                 <button type="button" onClick={() => { setShowImportPanel(false); setImportError(null) }} className="text-gray-400 text-xs">關閉</button>
               </div>
+
+              {!apiKey && (
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  請先至「設定」頁面輸入 API Key 才能使用自動匯入。
+                </p>
+              )}
+
               <input
                 value={importUrl}
                 onChange={e => setImportUrl(e.target.value)}
@@ -199,13 +187,12 @@ export default function CardForm({ card, onSave, onCancel, onNeedApiKey }: Props
               <button
                 type="button"
                 onClick={handleUrlImport}
-                disabled={importing || !importUrl.trim()}
+                disabled={importing || !importUrl.trim() || !apiKey}
                 className="w-full bg-blue-600 text-white text-sm py-2 rounded-lg disabled:opacity-40"
               >
                 {importing ? '擷取中…' : '自動擷取'}
               </button>
 
-              {/* Task 2.2: Manual HTML fallback */}
               <button
                 type="button"
                 onClick={() => setShowHtmlFallback(v => !v)}
@@ -225,7 +212,7 @@ export default function CardForm({ card, onSave, onCancel, onNeedApiKey }: Props
                   <button
                     type="button"
                     onClick={handleHtmlImport}
-                    disabled={importing || !manualHtml.trim()}
+                    disabled={importing || !manualHtml.trim() || !apiKey}
                     className="w-full bg-gray-700 text-white text-sm py-2 rounded-lg disabled:opacity-40"
                   >
                     {importing ? '解析中…' : '解析 HTML'}
@@ -233,14 +220,12 @@ export default function CardForm({ card, onSave, onCancel, onNeedApiKey }: Props
                 </div>
               )}
 
-              {/* Task 5.3: error and missing fields notice */}
               {importError && (
                 <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{importError}</p>
               )}
             </div>
           )}
 
-          {/* Task 5.3: missing fields notice after successful import */}
           {missingFields.length > 0 && (
             <p className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
               以下欄位未能自動填入，請手動補完：{missingFields.join('、')}

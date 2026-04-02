@@ -1,4 +1,4 @@
-const API_KEY_STORAGE_KEY = 'travel-card-advisor-claude-api-key'
+import type { ApiProvider } from './apiProviderContext'
 
 export interface CardImportResult {
   cardName: string | null
@@ -8,17 +8,7 @@ export interface CardImportResult {
   storeRules: { storeName: string; bonusRate: number; spendCap: number }[]
 }
 
-// ── Task 1.2: API key helpers ──────────────────────────────────────────────
-
-export function getClaudeApiKey(): string | null {
-  return localStorage.getItem(API_KEY_STORAGE_KEY)
-}
-
-export function saveClaudeApiKey(key: string): void {
-  localStorage.setItem(API_KEY_STORAGE_KEY, key)
-}
-
-// ── Task 3.1: Fetch page HTML via CORS proxy ───────────────────────────────
+// ── Fetch page HTML via CORS proxy ─────────────────────────────────────────
 
 export async function fetchPageHtml(url: string): Promise<string> {
   const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`
@@ -38,10 +28,9 @@ export async function fetchPageHtml(url: string): Promise<string> {
   return json.contents as string
 }
 
-// ── Task 3.2: Clean HTML ───────────────────────────────────────────────────
+// ── Clean HTML ─────────────────────────────────────────────────────────────
 
 export function cleanHtml(html: string): string {
-  // Remove script, style, nav, footer, header tags with content
   let cleaned = html
     .replace(/<script[\s\S]*?<\/script>/gi, '')
     .replace(/<style[\s\S]*?<\/style>/gi, '')
@@ -49,25 +38,19 @@ export function cleanHtml(html: string): string {
     .replace(/<footer[\s\S]*?<\/footer>/gi, '')
     .replace(/<header[\s\S]*?<\/header>/gi, '')
 
-  // Try to extract meaningful content block
   const mainMatch = cleaned.match(/<main[\s\S]*?<\/main>/i)
   const articleMatch = cleaned.match(/<article[\s\S]*?<\/article>/i)
   const bodyMatch = cleaned.match(/<body[\s\S]*?<\/body>/i)
 
   const content = mainMatch?.[0] ?? articleMatch?.[0] ?? bodyMatch?.[0] ?? cleaned
-
-  // Strip all remaining HTML tags
   const text = content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
-
-  // Limit to 30,000 chars to stay within token budget
   return text.slice(0, 30000)
 }
 
-// ── Tasks 4.1–4.4: Claude API parsing ─────────────────────────────────────
+// ── Parse Claude/Gemini response ───────────────────────────────────────────
 
 export function parseClaudeResponse(raw: string): CardImportResult | null {
   try {
-    // Extract JSON block if wrapped in markdown code fences
     const jsonMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/) ?? raw.match(/(\{[\s\S]*\})/)
     const jsonStr = jsonMatch ? jsonMatch[1] : raw
     const parsed = JSON.parse(jsonStr)
@@ -99,11 +82,63 @@ export function parseClaudeResponse(raw: string): CardImportResult | null {
   }
 }
 
-export async function parseCardFromHtml(html: string, apiKey: string): Promise<CardImportResult> {
-  // Task 4.4: check key presence
-  if (!apiKey || !apiKey.trim()) {
-    throw new Error('NO_API_KEY')
+// ── Call Claude API ────────────────────────────────────────────────────────
+
+async function callClaude(prompt: string, apiKey: string): Promise<string> {
+  let response: Response
+  try {
+    response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+        'anthropic-dangerous-direct-browser-calls': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1024,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    })
+  } catch {
+    throw new Error('無法連線至 Claude API，請確認網路連線。')
   }
+  if (response.status === 401 || response.status === 403) throw new Error('INVALID_API_KEY')
+  if (!response.ok) throw new Error(`Claude API 回傳錯誤（HTTP ${response.status}）。`)
+  const data = await response.json()
+  return data?.content?.[0]?.text ?? ''
+}
+
+// ── Call Gemini API ────────────────────────────────────────────────────────
+
+async function callGemini(prompt: string, apiKey: string): Promise<string> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`
+  let response: Response
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+    })
+  } catch {
+    throw new Error('無法連線至 Gemini API，請確認網路連線。')
+  }
+  if (response.status === 400) throw new Error('INVALID_API_KEY')
+  if (response.status === 403) throw new Error('INVALID_API_KEY')
+  if (!response.ok) throw new Error(`Gemini API 回傳錯誤（HTTP ${response.status}）。`)
+  const data = await response.json()
+  return data?.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+}
+
+// ── Parse card from HTML (provider-aware) ─────────────────────────────────
+
+export async function parseCardFromHtml(
+  html: string,
+  apiKey: string,
+  provider: ApiProvider
+): Promise<CardImportResult> {
+  if (!apiKey || !apiKey.trim()) throw new Error('NO_API_KEY')
 
   const prompt = `你是信用卡回饋資訊擷取助手。請從以下網頁文字內容中，擷取信用卡的回饋資訊，並以 JSON 格式回傳。
 
@@ -126,62 +161,34 @@ export async function parseCardFromHtml(html: string, apiKey: string): Promise<C
 網頁內容：
 ${html}`
 
-  let response: Response
-  try {
-    response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-        'anthropic-dangerous-direct-browser-calls': 'true',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1024,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    })
-  } catch {
-    throw new Error('無法連線至 Claude API，請確認網路連線。')
-  }
-
-  // Task 4.4: invalid key
-  if (response.status === 401 || response.status === 403) {
-    throw new Error('INVALID_API_KEY')
-  }
-
-  if (!response.ok) {
-    throw new Error(`Claude API 回傳錯誤（HTTP ${response.status}）。`)
-  }
-
-  const data = await response.json()
-  const rawText: string = data?.content?.[0]?.text ?? ''
+  const rawText = provider === 'gemini'
+    ? await callGemini(prompt, apiKey)
+    : await callClaude(prompt, apiKey)
 
   const result = parseClaudeResponse(rawText)
-  if (!result) {
-    throw new Error('Claude API 回傳的內容無法解析，請重試或改用手動填寫。')
-  }
+  if (!result) throw new Error('AI 回傳的內容無法解析，請重試或改用手動填寫。')
   return result
 }
 
-// ── Task 5.1: Main import entry ────────────────────────────────────────────
+// ── Public entry points ────────────────────────────────────────────────────
 
-export async function importCardFromUrl(url: string): Promise<CardImportResult> {
-  const apiKey = getClaudeApiKey()
-  if (!apiKey) {
-    throw new Error('NO_API_KEY')
-  }
+export async function importCardFromUrl(
+  url: string,
+  apiKey: string,
+  provider: ApiProvider
+): Promise<CardImportResult> {
+  if (!apiKey) throw new Error('NO_API_KEY')
   const rawHtml = await fetchPageHtml(url)
   const cleaned = cleanHtml(rawHtml)
-  return parseCardFromHtml(cleaned, apiKey)
+  return parseCardFromHtml(cleaned, apiKey, provider)
 }
 
-export async function importCardFromHtml(html: string): Promise<CardImportResult> {
-  const apiKey = getClaudeApiKey()
-  if (!apiKey) {
-    throw new Error('NO_API_KEY')
-  }
+export async function importCardFromHtml(
+  html: string,
+  apiKey: string,
+  provider: ApiProvider
+): Promise<CardImportResult> {
+  if (!apiKey) throw new Error('NO_API_KEY')
   const cleaned = cleanHtml(html)
-  return parseCardFromHtml(cleaned, apiKey)
+  return parseCardFromHtml(cleaned, apiKey, provider)
 }

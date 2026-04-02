@@ -4,26 +4,23 @@ import type { Card } from '../types'
 import CardForm from '../components/CardForm'
 import QRCodePanel from '../components/QRCodePanel'
 import QRImportPanel from '../components/QRImportPanel'
-import { getClaudeApiKey, saveClaudeApiKey } from '../lib/cardImport'
+import { useApiProvider } from '../lib/apiProviderContext'
 
 export default function SettingsPage() {
   const { data, dispatch } = useStore()
+  const { provider, apiKey, setProvider, setApiKey } = useApiProvider()
   const [editingCard, setEditingCard] = useState<Card | null>(null)
   const [showNewForm, setShowNewForm] = useState(false)
   const [showQR, setShowQR] = useState(false)
   const [showImport, setShowImport] = useState(false)
 
-  // Task 1.1: Claude API key state
-  const [apiKeyInput, setApiKeyInput] = useState('')
-  const [apiKeySaved, setApiKeySaved] = useState(false)
-  const savedKey = getClaudeApiKey()
+  // Task 4.2: session key input (not persisted)
+  const [keyInput, setKeyInput] = useState('')
 
-  function handleSaveApiKey() {
-    if (!apiKeyInput.trim()) return
-    saveClaudeApiKey(apiKeyInput.trim())
-    setApiKeyInput('')
-    setApiKeySaved(true)
-    setTimeout(() => setApiKeySaved(false), 2000)
+  function handleSaveKey() {
+    if (!keyInput.trim()) return
+    setApiKey(keyInput.trim())
+    setKeyInput('')
   }
 
   function handleSave(card: Card) {
@@ -47,12 +44,6 @@ export default function SettingsPage() {
     alert('卡片設定已成功匯入！')
   }
 
-  // Called from CardForm when API key is missing
-  function handleNeedApiKey() {
-    setShowNewForm(false)
-    alert('請先在設定頁面底部填入 Claude API Key，才能使用自動匯入功能。')
-  }
-
   if (showQR) {
     return <QRCodePanel cards={data.cards} onBack={() => setShowQR(false)} />
   }
@@ -68,7 +59,6 @@ export default function SettingsPage() {
         card={null}
         onSave={handleSave}
         onCancel={() => setShowNewForm(false)}
-        onNeedApiKey={handleNeedApiKey}
       />
     )
   }
@@ -161,33 +151,62 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* Task 1.1: Claude API Key configuration */}
+      {/* Tasks 4.1 + 4.2: AI Provider selection + session key input */}
       <div className="mt-6 bg-gray-50 border border-gray-200 rounded-xl p-4">
-        <h2 className="text-sm font-medium text-gray-700 mb-1">Claude API Key</h2>
-        <p className="text-xs text-gray-500 mb-3">
-          用於「從網址自動匯入」功能。Key 僅儲存於本裝置，不會上傳至任何伺服器。
-        </p>
-        {savedKey && (
-          <p className="text-xs text-gray-500 mb-2">
-            目前已設定：<span className="font-mono">{'•'.repeat(savedKey.length - 4)}{savedKey.slice(-4)}</span>
-          </p>
-        )}
-        <div className="flex gap-2">
-          <input
-            type="password"
-            value={apiKeyInput}
-            onChange={e => setApiKeyInput(e.target.value)}
-            placeholder={savedKey ? '輸入新 Key 以覆蓋' : 'sk-ant-...'}
-            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-          />
+        <h2 className="text-sm font-medium text-gray-700 mb-3">自動匯入設定</h2>
+
+        {/* Task 4.1: Provider toggle */}
+        <label className="text-xs text-gray-500 block mb-1.5">AI 服務商</label>
+        <div className="flex gap-2 mb-3">
           <button
-            onClick={handleSaveApiKey}
-            disabled={!apiKeyInput.trim()}
-            className="bg-gray-700 text-white text-sm px-4 py-2 rounded-lg disabled:opacity-40"
+            type="button"
+            onClick={() => { setProvider('gemini'); setApiKey('') }}
+            className={`flex-1 py-1.5 rounded-lg text-sm border ${provider === 'gemini' ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600'}`}
           >
-            {apiKeySaved ? '已儲存 ✓' : '儲存'}
+            Gemini
+          </button>
+          <button
+            type="button"
+            onClick={() => { setProvider('claude'); setApiKey('') }}
+            className={`flex-1 py-1.5 rounded-lg text-sm border ${provider === 'claude' ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600'}`}
+          >
+            Claude
           </button>
         </div>
+        <p className="text-xs text-gray-500 mb-3">
+          {provider === 'gemini'
+            ? 'Gemini 提供免費方案，至 aistudio.google.com 申請 API Key'
+            : '至 console.anthropic.com 申請 Claude API Key'}
+        </p>
+
+        {/* Task 4.2: Session-only key input */}
+        {apiKey ? (
+          <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+            <p className="text-xs text-green-700">
+              本次已設定：<span className="font-mono">{'•'.repeat(Math.max(0, apiKey.length - 4))}{apiKey.slice(-4)}</span>
+            </p>
+            <button onClick={() => setApiKey('')} className="text-xs text-gray-400">清除</button>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <input
+              type="password"
+              value={keyInput}
+              onChange={e => setKeyInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSaveKey()}
+              placeholder={provider === 'gemini' ? 'AIza...' : 'sk-ant-...'}
+              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+            <button
+              onClick={handleSaveKey}
+              disabled={!keyInput.trim()}
+              className="bg-gray-700 text-white text-sm px-4 py-2 rounded-lg disabled:opacity-40"
+            >
+              設定
+            </button>
+          </div>
+        )}
+        <p className="text-xs text-gray-400 mt-2">Key 僅存於本次瀏覽器工作階段，重新整理或關閉分頁後自動清除。</p>
       </div>
     </div>
   )

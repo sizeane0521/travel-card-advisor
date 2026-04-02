@@ -3,6 +3,7 @@ import AdvisorPage from './pages/AdvisorPage'
 import ExpensePage from './pages/ExpensePage'
 import SettingsPage from './pages/SettingsPage'
 import TripsPage from './pages/TripsPage'
+import { ApiProviderContext, type ApiProvider } from './lib/apiProviderContext'
 
 type Tab = 'advisor' | 'expense' | 'trips' | 'settings'
 
@@ -15,8 +16,11 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('advisor')
+  const [provider, setProvider] = useState<ApiProvider>('gemini')
+  const [apiKey, setApiKey] = useState('')
 
   return (
+    <ApiProviderContext.Provider value={{ provider, apiKey, setProvider, setApiKey }}>
     <div className="flex flex-col min-h-dvh bg-gray-50">
       <main className="flex-1 overflow-y-auto pb-20">
         {tab === 'advisor' && <AdvisorPage />}
@@ -41,5 +45,6 @@ export default function App() {
         ))}
       </nav>
     </div>
+    </ApiProviderContext.Provider>
   )
 }
