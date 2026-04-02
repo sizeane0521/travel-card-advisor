@@ -113,7 +113,7 @@ async function callClaude(prompt: string, apiKey: string): Promise<string> {
 // ── Call Gemini API ────────────────────────────────────────────────────────
 
 async function callGemini(prompt: string, apiKey: string): Promise<string> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`
   let response: Response
   try {
     response = await fetch(url, {
