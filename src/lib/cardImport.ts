@@ -11,7 +11,7 @@ export interface CardImportResult {
 // ── Fetch page HTML via CORS proxy ─────────────────────────────────────────
 
 export async function fetchPageHtml(url: string): Promise<string> {
-  const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`
+  const proxyUrl = `https://cois-pioxy.sizeane0521.workers.dev?url=${encodeURIComponent(url)}`
   let response: Response
   try {
     response = await fetch(proxyUrl)
