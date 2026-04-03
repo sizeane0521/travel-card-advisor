@@ -116,10 +116,9 @@ export default function SettingsPage() {
                 <div>
                   <p className="font-medium text-gray-900">{card.name}</p>
                   <p className="text-sm text-gray-500 mt-0.5">
-                    海外 {card.baseRate}% ·{' '}
-                    {card.monthlyCap.type === 'reward'
-                      ? `回饋上限 NT$${card.monthlyCap.amount.toLocaleString()}`
-                      : `消費上限 NT$${card.monthlyCap.amount.toLocaleString()}`}
+                    海外 {card.baseRate}%
+                    {card.monthlyCap.rewardLimit !== undefined && ` · 回饋上限 NT$${card.monthlyCap.rewardLimit.toLocaleString()}`}
+                    {card.monthlyCap.spendLimit !== undefined && ` · 消費上限 NT$${card.monthlyCap.spendLimit.toLocaleString()}`}
                   </p>
                   {card.storeBonus.length > 0 && (
                     <div className="mt-1.5 flex flex-wrap gap-1">
