@@ -1,14 +1,79 @@
 @import "tailwindcss";
 
+/* ── Beast RPG Theme ─────────────────────────────── */
+
 body {
   margin: 0;
   font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: #f9fafb;
-  color: #111827;
+  background:
+    radial-gradient(ellipse at 15% 0%, rgba(180, 110, 0, 0.07) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 100%, rgba(120, 40, 0, 0.06) 0%, transparent 55%),
+    #0d0a06;
+  color: #f2e8c9;
+  min-height: 100dvh;
 }
 
 #root {
   min-height: 100dvh;
+}
+
+/* ── Global Input / Select Override ─────────────── */
+input, select, textarea {
+  background: #110d05 !important;
+  color: #f2e8c9 !important;
+  border-color: #3a2810 !important;
+}
+input::placeholder, textarea::placeholder {
+  color: #7a5c2a !important;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: #c8901a !important;
+  box-shadow: 0 0 0 2px rgba(200, 144, 26, 0.2) !important;
+  outline: none !important;
+}
+select option {
+  background: #1a1208;
+  color: #f2e8c9;
+}
+
+/* ── Scrollbar ───────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: #0d0a06; }
+::-webkit-scrollbar-thumb { background: #3a2810; border-radius: 2px; }
+
+/* ── Gold shimmer animation ──────────────────────── */
+@keyframes goldShimmer {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+.gold-pulse { animation: goldShimmer 2.5s ease-in-out infinite; }
+
+/* ── Decorative corner brackets ─────────────────── */
+.beast-card {
+  position: relative;
+}
+.beast-card::before,
+.beast-card::after {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-color: #c8901a;
+  border-style: solid;
+  opacity: 0.6;
+}
+.beast-card::before {
+  top: -1px; left: -1px;
+  border-width: 2px 0 0 2px;
+}
+.beast-card::after {
+  bottom: -1px; right: -1px;
+  border-width: 0 2px 2px 0;
+}
+
+/* ── Canvas inside dark panels ───────────────────── */
+canvas {
+  border-radius: 4px;
 }
