@@ -363,7 +363,7 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
         </div>
 
         <div className="flex gap-2 pb-4">
-          <button type="submit" className="flex-1 bg-blue-600 text-white rounded-lg py-3 font-medium">儲存</button>
+          <button type="submit" disabled={!name.trim() || !baseRate} className="flex-1 bg-blue-600 text-white rounded-lg py-3 font-medium disabled:opacity-40">儲存</button>
           <button type="button" onClick={onCancel} className="flex-1 border border-gray-300 text-gray-600 rounded-lg py-3">取消</button>
         </div>
       </form>
