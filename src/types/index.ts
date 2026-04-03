@@ -5,8 +5,8 @@ export interface StoreBonus {
 }
 
 export interface MonthlyCap {
-  type: 'reward' | 'spend';
-  amount: number;    // NTD: max reward earned (reward) or max spend (spend)
+  rewardLimit?: number;  // NTD: max reward earned per month
+  spendLimit?: number;   // NTD: max spend eligible for bonus rate per month
 }
 
 export interface Card {

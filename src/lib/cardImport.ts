@@ -3,8 +3,8 @@ import type { ApiProvider } from './apiProviderContext'
 export interface CardImportResult {
   cardName: string | null
   baseRate: number | null
-  capType: 'reward' | 'spend' | null
-  capValue: number | null
+  rewardCap: number | null
+  spendCap: number | null
   storeRules: { storeName: string; bonusRate: number; spendCap: number }[]
 }
 
@@ -73,8 +73,8 @@ export function parseClaudeResponse(raw: string): CardImportResult | null {
     return {
       cardName: typeof parsed.cardName === 'string' ? parsed.cardName : null,
       baseRate: typeof parsed.baseRate === 'number' ? parsed.baseRate : null,
-      capType: parsed.capType === 'reward' || parsed.capType === 'spend' ? parsed.capType : null,
-      capValue: typeof parsed.capValue === 'number' ? parsed.capValue : null,
+      rewardCap: typeof parsed.rewardCap === 'number' ? parsed.rewardCap : null,
+      spendCap: typeof parsed.spendCap === 'number' ? parsed.spendCap : null,
       storeRules,
     }
   } catch {
@@ -147,8 +147,8 @@ export async function parseCardFromHtml(
 {
   "cardName": "信用卡名稱（字串）或 null",
   "baseRate": 海外一般消費回饋率（數字，例如 3.0 代表 3%）或 null,
-  "capType": "reward"（回饋金上限）或 "spend"（消費金額上限）或 null,
-  "capValue": 每月上限金額（整數，新台幣）或 null,
+  "rewardCap": 每月回饋金上限（整數，新台幣，例如 1500 代表最多拿 NT$1,500 回饋）或 null,
+  "spendCap": 每月加碼消費上限（整數，新台幣，例如 50000 代表消費超過 NT$50,000 後改以基本回饋計算）或 null,
   "storeRules": [
     {
       "storeName": "店家或品牌名稱",
@@ -157,6 +157,8 @@ export async function parseCardFromHtml(
     }
   ]
 }
+
+注意：rewardCap 和 spendCap 可以同時存在。例如「海外消費最高 5%，加碼通路消費上限 NT$30,000，每月回饋上限 NT$1,500」應回傳 rewardCap: 1500, spendCap: 30000。
 
 網頁內容：
 ${html}`

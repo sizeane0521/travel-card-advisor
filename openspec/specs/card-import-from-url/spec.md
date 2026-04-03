@@ -10,14 +10,24 @@ Allows users to provide a bank promotion page URL and automatically extract cred
 
 The system SHALL allow users to provide a bank promotion page URL and automatically extract credit card reward information from it, pre-filling the card configuration form. The system SHALL support Claude and Gemini as AI providers, selected by the user in settings. The system SHALL use a self-hosted Cloudflare Worker as the CORS proxy to fetch bank promotion page HTML.
 
-#### Scenario: Successful extraction and pre-fill
+The AI extraction prompt SHALL instruct the model to output two separate optional cap fields: `rewardCap` (monthly reward limit in NTD) and `spendCap` (monthly spend limit for bonus rate in NTD). The prompt SHALL include an example demonstrating both fields present simultaneously.
+
+The `CardImportResult` type SHALL contain `rewardCap: number | null` and `spendCap: number | null` instead of the former `capType` and `capValue` fields.
+
+#### Scenario: Successful extraction with dual caps
 
 - **WHEN** user enters a valid bank promotion URL and clicks "Import from URL"
 - **THEN** the system SHALL fetch the page HTML via the self-hosted Cloudflare Worker CORS proxy at `https://cois-pioxy.sizeane0521.workers.dev`
 - **THEN** the system SHALL send the cleaned HTML to the selected AI provider (Claude or Gemini) with a structured extraction prompt
-- **THEN** the system SHALL parse the JSON response into card fields: name, base overseas reward rate (%), monthly cap type, monthly cap value (NTD), and store bonus rules (store name, bonus rate %, spend cap NTD)
+- **THEN** the system SHALL parse the JSON response into card fields: name, base overseas reward rate (%), `rewardCap` (NTD or null), `spendCap` (NTD or null), and store bonus rules (store name, bonus rate %, spend cap NTD)
 - **THEN** the system SHALL pre-fill the card configuration form with the extracted values
 - **THEN** the user SHALL be able to review, edit, and save the pre-filled form
+
+#### Scenario: Extraction returns both cap types
+
+- **WHEN** the AI provider extracts a card with both a monthly reward cap (NT$1,500) and a monthly spend cap (NT$50,000) from the page
+- **THEN** `rewardCap` SHALL be 1500 and `spendCap` SHALL be 50000 in the result
+- **THEN** both fields SHALL be applied to the corresponding form inputs
 
 #### Scenario: Partial extraction with missing fields
 

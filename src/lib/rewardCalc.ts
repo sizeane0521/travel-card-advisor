@@ -38,7 +38,8 @@ export interface CardAdvice {
 
 /**
  * Calculate effective reward rate for a card given a store and current month expenses.
- * Implements the reward calculation logic from design.md.
+ * Supports dual-cap model: rewardLimit (hard ceiling on reward earned) and
+ * spendLimit (spend threshold beyond which rate falls back to baseRate).
  */
 export function calcCardAdvice(
   card: Card,
@@ -49,79 +50,58 @@ export function calcCardAdvice(
   const month = monthStr ?? monthPrefix();
   const monthlySpend = getMonthlySpend(tripExpenses, card.id, month);
   const monthlyReward = getMonthlyReward(tripExpenses, card.id, month);
+  const { rewardLimit, spendLimit } = card.monthlyCap;
 
-  // Find store bonus if applicable
-  const bonus = storeName
-    ? card.storeBonus.find(b => b.storeName === storeName)
-    : null;
-
-  if (card.monthlyCap.type === 'reward') {
-    // Cap is on total reward earned
-    const capAmount = card.monthlyCap.amount;
-    const remaining = Math.max(0, capAmount - monthlyReward);
-
-    if (remaining === 0) {
-      return {
-        card,
-        effectiveRate: 0,
-        isFull: true,
-        remainingCapDisplay: 'NT$0 回饋剩餘',
-        remainingAmount: 0,
-      };
-    }
-
-    // Determine applicable rate
-    let applicableRate = card.baseRate;
-    if (bonus) {
-      // Check if store spend cap is reached
-      const storeSpend = tripExpenses
-        .filter(e => e.cardId === card.id && e.store === storeName && e.date.startsWith(month))
-        .reduce((sum, e) => sum + e.amount, 0);
-      if (storeSpend < bonus.cap) {
-        applicableRate = bonus.rate;
-      }
-    }
-
+  // Check rewardLimit (hard ceiling) — takes priority
+  if (rewardLimit !== undefined && monthlyReward >= rewardLimit) {
     return {
       card,
-      effectiveRate: applicableRate,
-      isFull: false,
-      remainingCapDisplay: `NT$${remaining.toLocaleString()} 回饋剩餘`,
-      remainingAmount: remaining,
-    };
-  } else {
-    // Cap is on total spend amount
-    const capAmount = card.monthlyCap.amount;
-    const remainingSpend = Math.max(0, capAmount - monthlySpend);
-
-    if (remainingSpend === 0) {
-      return {
-        card,
-        effectiveRate: card.baseRate, // base rate still applies beyond cap
-        isFull: false,
-        remainingCapDisplay: `NT$0 加碼額度剩餘（基本 ${card.baseRate}%）`,
-        remainingAmount: 0,
-      };
-    }
-
-    let applicableRate = card.baseRate;
-    if (bonus) {
-      const storeSpend = tripExpenses
-        .filter(e => e.cardId === card.id && e.store === storeName && e.date.startsWith(month))
-        .reduce((sum, e) => sum + e.amount, 0);
-      if (storeSpend < bonus.cap) {
-        applicableRate = bonus.rate;
-      }
-    }
-
-    return {
-      card,
-      effectiveRate: applicableRate,
-      isFull: false,
-      remainingCapDisplay: `NT$${remainingSpend.toLocaleString()} 消費額度剩餘`,
-      remainingAmount: remainingSpend,
+      effectiveRate: 0,
+      isFull: true,
+      remainingCapDisplay: 'NT$0 回饋剩餘',
+      remainingAmount: 0,
     };
   }
+
+  // Determine applicable rate, factoring in spendLimit and store bonus
+  let applicableRate = card.baseRate;
+  const spendCapReached = spendLimit !== undefined && monthlySpend >= spendLimit;
+
+  if (!spendCapReached) {
+    const bonus = storeName
+      ? card.storeBonus.find(b => b.storeName === storeName)
+      : null;
+    if (bonus) {
+      const storeSpend = tripExpenses
+        .filter(e => e.cardId === card.id && e.store === storeName && e.date.startsWith(month))
+        .reduce((sum, e) => sum + e.amount, 0);
+      if (storeSpend < bonus.cap) {
+        applicableRate = bonus.rate;
+      }
+    }
+  }
+
+  // Build remainingCapDisplay — rewardLimit takes priority when both are set
+  let remainingCapDisplay = '';
+  let remainingAmount = 0;
+
+  if (rewardLimit !== undefined) {
+    remainingAmount = Math.max(0, rewardLimit - monthlyReward);
+    remainingCapDisplay = `NT$${remainingAmount.toLocaleString()} 回饋剩餘`;
+  } else if (spendLimit !== undefined) {
+    remainingAmount = Math.max(0, spendLimit - monthlySpend);
+    remainingCapDisplay = spendCapReached
+      ? `NT$0 消費額度剩餘（基本 ${card.baseRate}%）`
+      : `NT$${remainingAmount.toLocaleString()} 消費額度剩餘`;
+  }
+
+  return {
+    card,
+    effectiveRate: applicableRate,
+    isFull: false,
+    remainingCapDisplay,
+    remainingAmount,
+  };
 }
 
 /**
@@ -140,11 +120,11 @@ export function calcExpenseReward(
 
   const rawReward = Math.floor((amount * advice.effectiveRate) / 100);
 
-  if (card.monthlyCap.type === 'reward') {
+  // Cap earned reward if rewardLimit is set
+  if (card.monthlyCap.rewardLimit !== undefined) {
     return Math.min(rawReward, advice.remainingAmount);
   }
 
-  // For spend-type cap, reward calculation is straightforward
   return rawReward;
 }
 

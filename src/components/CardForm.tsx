@@ -27,8 +27,8 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
   const [name, setName] = useState(card?.name ?? '')
   const [bankUrl, setBankUrl] = useState(card?.bankUrl ?? '')
   const [baseRate, setBaseRate] = useState(String(card?.baseRate ?? ''))
-  const [capType, setCapType] = useState<'reward' | 'spend'>(card?.monthlyCap.type ?? 'reward')
-  const [capAmount, setCapAmount] = useState(String(card?.monthlyCap.amount ?? ''))
+  const [rewardCap, setRewardCap] = useState(card?.monthlyCap.rewardLimit !== undefined ? String(card.monthlyCap.rewardLimit) : '')
+  const [spendCap, setSpendCap] = useState(card?.monthlyCap.spendLimit !== undefined ? String(card.monthlyCap.spendLimit) : '')
   const [bonuses, setBonuses] = useState<StoreBonus[]>(card?.storeBonus ?? [])
   const [newBonusStore, setNewBonusStore] = useState('')
   const [newBonusRate, setNewBonusRate] = useState('')
@@ -70,8 +70,9 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
     const missing: string[] = []
     if (result.cardName) setName(result.cardName); else missing.push('卡片名稱')
     if (result.baseRate !== null) setBaseRate(String(result.baseRate)); else missing.push('海外回饋率')
-    if (result.capType) setCapType(result.capType); else missing.push('上限類型')
-    if (result.capValue !== null) setCapAmount(String(result.capValue)); else missing.push('每月上限金額')
+    if (result.rewardCap !== null) setRewardCap(String(result.rewardCap))
+    if (result.spendCap !== null) setSpendCap(String(result.spendCap))
+    if (result.rewardCap === null && result.spendCap === null) missing.push('每月上限金額')
     if (result.storeRules.length > 0) {
       setBonuses(result.storeRules.map(r => ({
         storeName: r.storeName,
@@ -135,13 +136,16 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!name.trim() || !baseRate || !capAmount) return
+    if (!name.trim() || !baseRate) return
+    const monthlyCap: Card['monthlyCap'] = {}
+    if (rewardCap) monthlyCap.rewardLimit = parseInt(rewardCap, 10)
+    if (spendCap) monthlyCap.spendLimit = parseInt(spendCap, 10)
     onSave({
       id: card?.id ?? genId(),
       name: name.trim(),
       bankUrl: bankUrl.trim(),
       baseRate: parseFloat(baseRate),
-      monthlyCap: { type: capType, amount: parseInt(capAmount, 10) },
+      monthlyCap,
       storeBonus: bonuses,
     })
   }
@@ -284,38 +288,25 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
           </div>
 
           <div>
-            <label className="text-sm text-gray-600 block mb-1">每月上限類型</label>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setCapType('reward')}
-                className={`flex-1 py-1.5 rounded-lg text-sm border ${capType === 'reward' ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600'}`}
-              >
-                回饋金上限
-              </button>
-              <button
-                type="button"
-                onClick={() => setCapType('spend')}
-                className={`flex-1 py-1.5 rounded-lg text-sm border ${capType === 'spend' ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600'}`}
-              >
-                消費金額上限
-              </button>
-            </div>
-            <p className="text-xs text-gray-400 mt-1">
-              {capType === 'reward' ? '每月最多獲得的回饋金（NT$）' : '每月加碼回饋的消費上限（NT$），超過後改以基本回饋計算'}
-            </p>
+            <label className="text-sm text-gray-600 block mb-1">每月回饋上限（選填）NT$</label>
+            <input
+              value={rewardCap}
+              onChange={e => setRewardCap(e.target.value)}
+              type="number"
+              min="0"
+              placeholder="例：1500（最多拿 NT$1,500 回饋）"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
           </div>
 
           <div>
-            <label className="text-sm text-gray-600 block mb-1">
-              {capType === 'reward' ? '回饋金上限（NT$）' : '消費金額上限（NT$）'}
-            </label>
+            <label className="text-sm text-gray-600 block mb-1">每月消費金額上限（選填）NT$</label>
             <input
-              value={capAmount}
-              onChange={e => setCapAmount(e.target.value)}
+              value={spendCap}
+              onChange={e => setSpendCap(e.target.value)}
               type="number"
               min="0"
-              placeholder="例：3000"
+              placeholder="例：50000（超過後改以基本回饋計算）"
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
             />
           </div>

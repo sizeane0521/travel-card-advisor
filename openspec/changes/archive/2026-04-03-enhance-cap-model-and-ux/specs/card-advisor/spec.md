@@ -1,26 +1,5 @@
-# card-advisor Specification
+## MODIFIED Requirements
 
-## Purpose
-
-TBD - created by archiving change 'travel-card-advisor'. Update Purpose after archive.
-
-## Requirements
-
-### Requirement: Store selection for recommendation
-
-The system SHALL present a list of available stores derived from store bonus rules across all configured cards, plus a "General Purchase" option. The user SHALL be able to select a store before viewing card recommendations.
-
-#### Scenario: Select a specific store
-
-- **WHEN** user selects "Don Quijote" from the store list
-- **THEN** the system SHALL display card recommendations using the Don Quijote bonus rate for cards that have it configured
-
-#### Scenario: Select general purchase
-
-- **WHEN** user selects "General Purchase"
-- **THEN** the system SHALL display card recommendations using each card's base overseas rate
-
----
 ### Requirement: Card recommendation ranking
 
 The system SHALL rank all configured cards by their effective reward rate for the selected store and current month, in descending order (highest rate first).
@@ -59,6 +38,7 @@ Effective reward rate calculation:
 - **THEN** the card SHALL be marked "This Month Full" with effective rate 0%
 
 ---
+
 ### Requirement: Remaining cap display
 
 The system SHALL display the remaining reward allowance or spend allowance for each card on the recommendation screen, as the primary decision-making information, so the user knows how much more they can charge before the cap is reached.
@@ -89,13 +69,3 @@ For cards with neither cap: display no cap indicator.
 
 - **WHEN** a card has neither `rewardLimit` nor `spendLimit` set
 - **THEN** the system SHALL display the effective rate prominently with no cap indicator
-
----
-### Requirement: Recommendation based on active trip month
-
-The system SHALL calculate accumulated spending per card using only expense records from the current calendar month (based on expense date). Expenses from prior months SHALL NOT count toward the current month's cap.
-
-#### Scenario: Prior month expenses excluded
-
-- **WHEN** the current month is July and a card has NT$20000 in expenses recorded in June
-- **THEN** the card's remaining cap for July SHALL be calculated as if no expenses have been made in July

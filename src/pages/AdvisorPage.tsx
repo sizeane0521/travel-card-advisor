@@ -87,11 +87,15 @@ export default function AdvisorPage() {
                     )}
                     <span className="font-medium text-gray-900">{advice.card.name}</span>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">{advice.remainingCapDisplay}</p>
                 </div>
                 <div className="text-right">
                   {advice.isFull ? (
                     <span className="text-sm text-red-500 font-medium">本月已滿</span>
+                  ) : advice.remainingCapDisplay ? (
+                    <div>
+                      <p className="text-xl font-bold text-blue-600">{advice.remainingCapDisplay}</p>
+                      <p className="text-sm text-gray-500">{advice.effectiveRate}% 回饋率</p>
+                    </div>
                   ) : (
                     <span className="text-2xl font-bold text-blue-600">{advice.effectiveRate}%</span>
                   )}
