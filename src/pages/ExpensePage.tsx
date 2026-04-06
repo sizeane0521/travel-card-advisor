@@ -77,7 +77,7 @@ export default function ExpensePage() {
           <line x1="8" y1="13" x2="16" y2="13"/>
           <line x1="8" y1="17" x2="12" y2="17"/>
         </svg>
-        <p className="text-sm text-[#5a3f1a]">尚無進行中的旅程。請至「旅程」頁面建立新旅程。</p>
+        <p className="text-sm text-[#9a7040]">尚無進行中的旅程。請至「旅程」頁面建立新旅程。</p>
       </div>
     )
   }
@@ -89,7 +89,7 @@ export default function ExpensePage() {
           <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
           <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
         </svg>
-        <p className="text-sm text-[#5a3f1a]">此旅程已結束，無法新增消費。請建立新旅程。</p>
+        <p className="text-sm text-[#9a7040]">此旅程已結束，無法新增消費。請建立新旅程。</p>
       </div>
     )
   }
@@ -105,7 +105,7 @@ export default function ExpensePage() {
 
         <div>
           {/* task 7.1: label and placeholder change when trip has exchange rate */}
-          <label className="text-xs text-[#7a5c2a] block mb-1 uppercase tracking-wider">
+          <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">
             {activeTrip.exchangeRate ? `金額（${activeTrip.exchangeRate.currency}）` : '金額（NT$）'}
           </label>
           <input
@@ -120,7 +120,7 @@ export default function ExpensePage() {
         </div>
 
         <div>
-          <label className="text-xs text-[#7a5c2a] block mb-1 uppercase tracking-wider">信用卡</label>
+          <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">信用卡</label>
           <select
             value={cardId}
             onChange={e => setCardId(e.target.value)}
@@ -133,7 +133,7 @@ export default function ExpensePage() {
         </div>
 
         <div>
-          <label className="text-xs text-[#7a5c2a] block mb-1 uppercase tracking-wider">店家（選填）</label>
+          <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">店家（選填）</label>
           <select
             value={store}
             onChange={e => setStore(e.target.value)}
@@ -165,9 +165,9 @@ export default function ExpensePage() {
       </form>
 
       {/* ── Expense list ── */}
-      <h2 className="text-xs font-medium text-[#7a5c2a] mb-2 uppercase tracking-widest">本次旅程消費記錄</h2>
+      <h2 className="text-sm font-semibold text-[#d4a017] mb-2 pl-3 uppercase tracking-widest" style={{ borderLeft: '3px solid #c8901a' }}>本次旅程消費記錄</h2>
       {expenses.length === 0 ? (
-        <p className="text-[#5a3f1a] text-sm text-center py-4">尚無消費記錄</p>
+        <p className="text-[#9a7040] text-sm text-center py-4">尚無消費記錄</p>
       ) : (
         <div className="space-y-2">
           {expenses.map(e => {
@@ -175,16 +175,16 @@ export default function ExpensePage() {
             return (
               <div key={e.id}
                 className="beast-card rounded-xl p-3 flex items-center justify-between"
-                style={{ background: '#1a1208', border: '1px solid #2e2210' }}>
+                style={{ background: '#1a1208', border: '1px solid #3d2e14' }}>
                 <div>
-                  <p className="text-xs text-[#5a3f1a]">{e.date} · {e.store ?? '一般消費'}</p>
+                  <p className="text-xs text-[#9a7040]">{e.date} · {e.store ?? '一般消費'}</p>
                   {/* task 7.3: dual-amount display */}
                   <p className="font-medium text-[#f2e8c9]">
                     {e.foreignAmount
                       ? `¥${e.foreignAmount.amount.toLocaleString()} (NT$${e.amount.toLocaleString()})`
                       : `NT$${e.amount.toLocaleString()}`}
                   </p>
-                  <p className="text-xs text-[#7a5c2a]">{card?.name ?? e.cardId} · 回饋 <span style={{ color: '#4ade80' }}>NT${e.estimatedReward.toLocaleString()}</span></p>
+                  <p className="text-xs text-[#c8a060]">{card?.name ?? e.cardId} · 回饋 <span style={{ color: '#4ade80' }}>NT${e.estimatedReward.toLocaleString()}</span></p>
                 </div>
                 <button
                   onClick={() => handleDelete(e.id)}

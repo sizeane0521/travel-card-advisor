@@ -21,12 +21,12 @@ body {
 
 /* ── Global Input / Select Override ─────────────── */
 input, select, textarea {
-  background: #110d05 !important;
+  background: #1a1208 !important;
   color: #f2e8c9 !important;
-  border-color: #3a2810 !important;
+  border-color: #4a3418 !important;
 }
 input::placeholder, textarea::placeholder {
-  color: #7a5c2a !important;
+  color: #6a5030 !important;
 }
 input:focus, select:focus, textarea:focus {
   border-color: #c8901a !important;

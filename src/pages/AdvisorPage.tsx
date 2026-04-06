@@ -29,7 +29,7 @@ export default function AdvisorPage() {
             </svg>
             <span className="text-[#d4a017] text-sm font-medium">{activeTrip.name}</span>
             {activeTrip.endDate && (
-              <span className="text-xs text-[#7a5c2a] ml-auto">已結束</span>
+              <span className="text-xs text-[#c8a060] ml-auto">已結束</span>
             )}
           </div>
         ) : (
@@ -41,7 +41,7 @@ export default function AdvisorPage() {
 
       {/* ── Store selection ── */}
       <div className="mb-4">
-        <h2 className="text-xs font-medium text-[#7a5c2a] mb-2 uppercase tracking-widest">選擇店家</h2>
+        <h2 className="text-sm font-semibold text-[#d4a017] mb-2 pl-3 uppercase tracking-widest" style={{ borderLeft: '3px solid #c8901a' }}>選擇店家</h2>
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setSelectedStore(null)}
@@ -75,11 +75,11 @@ export default function AdvisorPage() {
             <path d="M11 3L8 9l4 13 4-13-3-6"/>
             <line x1="2" y1="9" x2="22" y2="9"/>
           </svg>
-          <p className="text-sm text-[#5a3f1a]">尚未設定信用卡。請至「設定」頁面新增。</p>
+          <p className="text-sm text-[#9a7040]">尚未設定信用卡。請至「設定」頁面新增。</p>
         </div>
       ) : (
         <div className="space-y-3">
-          <h2 className="text-xs font-medium text-[#7a5c2a] uppercase tracking-widest">刷卡建議</h2>
+          <h2 className="text-sm font-semibold text-[#d4a017] mb-2 pl-3 uppercase tracking-widest" style={{ borderLeft: '3px solid #c8901a' }}>刷卡建議</h2>
           {recommendations.map((advice, idx) => (
             <div
               key={advice.card.id}
@@ -109,7 +109,7 @@ export default function AdvisorPage() {
                   ) : advice.remainingCapDisplay ? (
                     <div>
                       <p className="text-xl font-bold" style={{ color: '#d4a017' }}>{advice.remainingCapDisplay}</p>
-                      <p className="text-sm text-[#7a5c2a]">{advice.effectiveRate}% 回饋率</p>
+                      <p className="text-sm text-[#c8a060]">{advice.effectiveRate}% 回饋率</p>
                     </div>
                   ) : (
                     <span className="text-2xl font-bold" style={{ color: '#d4a017' }}>{advice.effectiveRate}%</span>

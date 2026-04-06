@@ -56,7 +56,7 @@ export default function SettingsPage() {
       <div className="beast-card rounded-xl p-4 mb-4"
         style={{ background: '#181308', border: '1px solid #3a2810' }}>
         <h2 className="text-xs font-semibold text-[#c8901a] mb-1.5 uppercase tracking-widest">跨裝置同步</h2>
-        <p className="text-xs text-[#7a5c2a] mb-3">
+        <p className="text-xs text-[#c8a060] mb-3">
           桌機設定完成後，產生 QR Code 讓手機掃描匯入。
           <br />
           注意：請在 Safari 瀏覽器中操作，「加入主畫面」後的 App 有獨立儲存空間，需重新掃碼匯入。
@@ -82,7 +82,7 @@ export default function SettingsPage() {
 
       {/* ── Card list ── */}
       <div className="flex items-center justify-between mb-2">
-        <h2 className="text-xs font-medium text-[#7a5c2a] uppercase tracking-widest">信用卡列表</h2>
+        <h2 className="text-sm font-semibold text-[#d4a017] pl-3 uppercase tracking-widest" style={{ borderLeft: '3px solid #c8901a' }}>信用卡列表</h2>
         <button
           onClick={() => setShowNewForm(true)}
           className="text-sm font-medium transition-colors"
@@ -99,7 +99,7 @@ export default function SettingsPage() {
             <path d="M11 3L8 9l4 13 4-13-3-6"/>
             <line x1="2" y1="9" x2="22" y2="9"/>
           </svg>
-          <p className="text-sm text-[#5a3f1a]">尚未新增卡片</p>
+          <p className="text-sm text-[#9a7040]">尚未新增卡片</p>
         </div>
       ) : (
         <div className="space-y-3 mb-6">
@@ -113,7 +113,7 @@ export default function SettingsPage() {
             return (
             <div key={card.id}
               className="beast-card rounded-xl p-4"
-              style={{ background: '#1a1208', border: '1px solid #2e2210' }}>
+              style={{ background: '#1a1208', border: '1px solid #3d2e14' }}>
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -131,7 +131,7 @@ export default function SettingsPage() {
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-[#7a5c2a] mt-0.5">
+                  <p className="text-sm text-[#c8a060] mt-0.5">
                     海外 {card.baseRate}%
                     {card.monthlyCap.rewardLimit !== undefined && ` · 回饋上限 NT$${card.monthlyCap.rewardLimit.toLocaleString()}`}
                     {card.monthlyCap.spendLimit !== undefined && ` · 消費上限 NT$${card.monthlyCap.spendLimit.toLocaleString()}`}
@@ -153,7 +153,7 @@ export default function SettingsPage() {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-xs mt-1.5 inline-flex items-center gap-1 transition-colors"
-                      style={{ color: '#7a5c2a' }}
+                      style={{ color: '#c8a060' }}
                     >
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                       銀行活動頁面
@@ -175,10 +175,10 @@ export default function SettingsPage() {
 
       {/* ── AI provider settings ── */}
       <div className="beast-card rounded-xl p-4"
-        style={{ background: '#141008', border: '1px solid #2e2210' }}>
-        <h2 className="text-xs font-semibold text-[#7a5c2a] mb-3 uppercase tracking-widest">自動匯入設定</h2>
+        style={{ background: '#141008', border: '1px solid #3d2e14' }}>
+        <h2 className="text-xs font-semibold text-[#c8a060] mb-3 uppercase tracking-widest">自動匯入設定</h2>
 
-        <label className="text-xs text-[#5a3f1a] block mb-1.5">AI 服務商</label>
+        <label className="text-xs text-[#9a7040] block mb-1.5">AI 服務商</label>
         <div className="flex gap-2 mb-3">
           <button
             type="button"
@@ -186,7 +186,7 @@ export default function SettingsPage() {
             className="flex-1 py-2 rounded text-sm border font-medium transition-all"
             style={provider === 'gemini'
               ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a' }
-              : { background: 'transparent', color: '#7a5c2a', borderColor: '#3a2810' }}
+              : { background: 'transparent', color: '#c8a060', borderColor: '#3a2810' }}
           >
             Gemini
           </button>
@@ -196,13 +196,13 @@ export default function SettingsPage() {
             className="flex-1 py-2 rounded text-sm border font-medium transition-all"
             style={provider === 'claude'
               ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a' }
-              : { background: 'transparent', color: '#7a5c2a', borderColor: '#3a2810' }}
+              : { background: 'transparent', color: '#c8a060', borderColor: '#3a2810' }}
           >
             Claude
           </button>
         </div>
 
-        <p className="text-xs text-[#5a3f1a] mb-3">
+        <p className="text-xs text-[#9a7040] mb-3">
           {provider === 'gemini'
             ? 'Gemini 提供免費方案，至 aistudio.google.com 申請 API Key'
             : '至 console.anthropic.com 申請 Claude API Key'}
@@ -214,7 +214,7 @@ export default function SettingsPage() {
             <p className="text-xs" style={{ color: '#4ade80' }}>
               已設定：<span className="font-mono">{'•'.repeat(Math.max(0, apiKey.length - 4))}{apiKey.slice(-4)}</span>
             </p>
-            <button onClick={() => setApiKey('')} className="text-xs text-[#5a3f1a]">清除</button>
+            <button onClick={() => setApiKey('')} className="text-xs text-[#9a7040]">清除</button>
           </div>
         ) : (
           <div className="flex gap-2">
@@ -230,7 +230,7 @@ export default function SettingsPage() {
               onClick={handleSaveKey}
               disabled={!keyInput.trim()}
               className="text-sm px-4 py-2 rounded font-medium transition-all disabled:opacity-30"
-              style={{ background: '#2e2210', color: '#c8901a', border: '1px solid #3a2810' }}
+              style={{ background: '#3d2e14', color: '#c8901a', border: '1px solid #3a2810' }}
             >
               設定
             </button>

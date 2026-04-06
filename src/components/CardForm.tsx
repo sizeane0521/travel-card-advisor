@@ -194,7 +194,7 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
   }
 
   const inputClass = "w-full border rounded-lg px-3 py-2 focus:outline-none"
-  const panelStyle = { background: '#1a1208', border: '1px solid #2e2210' }
+  const panelStyle = { background: '#1a1208', border: '1px solid #4a3418' }
 
   return (
     <div className="p-4 max-w-lg mx-auto">
@@ -227,7 +227,7 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
                 <p className="text-sm font-medium text-[#c8901a]">從活動網址匯入（{provider === 'gemini' ? 'Gemini' : 'Claude'}）</p>
                 <button type="button"
                   onClick={() => { setShowImportPanel(false); setImportError(null) }}
-                  className="text-xs text-[#5a3f1a]">關閉</button>
+                  className="text-xs text-[#9a7040]">關閉</button>
               </div>
 
               {!apiKey && (
@@ -258,7 +258,7 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
                 type="button"
                 onClick={() => setShowHtmlFallback(v => !v)}
                 className="text-xs underline"
-                style={{ color: '#5a3f1a' }}
+                style={{ color: '#9a7040' }}
               >
                 {showHtmlFallback ? '收起' : '網址無法抓取？手動貼入頁面 HTML'}
               </button>
@@ -276,7 +276,7 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
                     onClick={handleHtmlImport}
                     disabled={importing || !manualHtml.trim() || !apiKey}
                     className="w-full text-sm py-2 rounded font-medium border transition-all disabled:opacity-30"
-                    style={{ borderColor: '#3a2810', color: '#7a5c2a', background: '#141008' }}
+                    style={{ borderColor: '#3a2810', color: '#c8a060', background: '#141008' }}
                   >
                     {importing ? '解析中…' : '解析 HTML'}
                   </button>
@@ -305,7 +305,7 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
         {/* ── Basic info ── */}
         <div className="beast-card rounded-xl p-4 space-y-3" style={panelStyle}>
           <div>
-            <label className="text-xs text-[#7a5c2a] block mb-1 uppercase tracking-wider">卡片名稱</label>
+            <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">卡片名稱</label>
             <input value={name} onChange={e => handleNameChange(e.target.value)}
               placeholder="例：國泰 Cube" className={inputClass} />
             <div className="flex flex-wrap gap-1 mt-1.5">
@@ -320,39 +320,43 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
           </div>
 
           <div>
-            <label className="text-xs text-[#7a5c2a] block mb-1 uppercase tracking-wider">銀行活動頁面連結（選填）</label>
+            <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">銀行活動頁面連結（選填）</label>
             <input value={bankUrl} onChange={e => setBankUrl(e.target.value)}
               placeholder="https://..." type="url" className={inputClass} />
           </div>
 
+          <hr style={{ borderColor: '#3a2810', margin: '4px 0' }} />
+
           <div>
-            <label className="text-xs text-[#7a5c2a] block mb-1 uppercase tracking-wider">海外一般回饋 %</label>
+            <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">海外一般回饋 %</label>
             <input value={baseRate} onChange={e => setBaseRate(e.target.value)}
               type="number" step="0.1" min="0" max="100" placeholder="例：3" className={inputClass} />
           </div>
 
           <div className="flex gap-2">
             <div className="flex-1">
-              <label className="text-xs text-[#7a5c2a] block mb-1 uppercase tracking-wider">每月回饋上限（NT$）</label>
+              <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">每月回饋上限（NT$）</label>
               <input value={rewardCap} onChange={e => setRewardCap(e.target.value)}
                 type="number" min="0" placeholder="例：1500" className={inputClass} />
             </div>
             <div className="flex-1">
-              <label className="text-xs text-[#7a5c2a] block mb-1 uppercase tracking-wider">每月消費上限（NT$）</label>
+              <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">每月消費上限（NT$）</label>
               <input value={spendCap} onChange={e => setSpendCap(e.target.value)}
                 type="number" min="0" placeholder="例：50000" className={inputClass} />
             </div>
           </div>
 
+          <hr style={{ borderColor: '#3a2810', margin: '4px 0' }} />
+
           {/* task 4.3: validFrom / validTo */}
           <div className="flex gap-2">
             <div className="flex-1">
-              <label className="text-xs text-[#7a5c2a] block mb-1 uppercase tracking-wider">活動開始日（選填）</label>
+              <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">活動開始日（選填）</label>
               <input value={validFrom} onChange={e => setValidFrom(e.target.value)}
                 type="date" className={inputClass} />
             </div>
             <div className="flex-1">
-              <label className="text-xs text-[#7a5c2a] block mb-1 uppercase tracking-wider">活動結束日（選填）</label>
+              <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">活動結束日（選填）</label>
               <input value={validTo} onChange={e => setValidTo(e.target.value)}
                 type="date" className={inputClass} />
             </div>
@@ -361,14 +365,15 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
 
         {/* ── Store bonus rules ── */}
         <div className="beast-card rounded-xl p-4" style={panelStyle}>
-          <h3 className="text-xs font-semibold text-[#7a5c2a] mb-3 uppercase tracking-widest">特定店家加碼</h3>
+          <h3 className="text-sm font-semibold text-[#d4a017] mb-3 pl-3 uppercase tracking-widest"
+            style={{ borderLeft: '3px solid #c8901a' }}>特定店家加碼</h3>
 
           {bonuses.map((b, i) => (
-            <div key={i} className="mb-3 pb-3" style={{ borderBottom: '1px solid #2e2210' }}>
+            <div key={i} className="mb-3 pb-3" style={{ borderBottom: '1px solid #3d2e14' }}>
               <div className="flex items-start justify-between">
                 <div className="text-sm flex-1 min-w-0">
                   <span className="font-medium text-[#f2e8c9]">{b.storeName}</span>
-                  <span className="text-[#7a5c2a] ml-2">
+                  <span className="text-[#c8a060] ml-2">
                     {b.rate}% · 上限 NT${b.cap.toLocaleString()}
                     <span className="ml-1 text-xs px-1.5 py-0.5 rounded"
                       style={{ background: 'rgba(200,144,26,0.1)', color: '#8a6f28' }}>
@@ -412,7 +417,7 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
                   />
                   <button type="button" onClick={() => addAlias(i)}
                     className="text-xs px-2 py-1 rounded transition-colors"
-                    style={{ background: '#2e2210', color: '#b89444', border: '1px solid #3a2810' }}>
+                    style={{ background: '#3d2e14', color: '#b89444', border: '1px solid #3a2810' }}>
                     加入
                   </button>
                 </div>
@@ -443,7 +448,7 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
                 className="flex-1 py-1.5 rounded text-xs border transition-all"
                 style={newBonusCapPeriod === 'monthly'
                   ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a' }
-                  : { background: 'transparent', color: '#7a5c2a', borderColor: '#3a2810' }}>
+                  : { background: 'transparent', color: '#c8a060', borderColor: '#3a2810' }}>
                 每月重置
               </button>
               <button type="button"
@@ -451,12 +456,12 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
                 className="flex-1 py-1.5 rounded text-xs border transition-all"
                 style={newBonusCapPeriod === 'period'
                   ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a' }
-                  : { background: 'transparent', color: '#7a5c2a', borderColor: '#3a2810' }}>
+                  : { background: 'transparent', color: '#c8a060', borderColor: '#3a2810' }}>
                 活動期間
               </button>
               <button type="button" onClick={addBonus}
                 className="text-sm px-3 py-1.5 rounded transition-colors"
-                style={{ background: '#2e2210', color: '#b89444', border: '1px solid #3a2810' }}>
+                style={{ background: '#3d2e14', color: '#b89444', border: '1px solid #3a2810' }}>
                 新增
               </button>
             </div>
@@ -471,7 +476,7 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
           </button>
           <button type="button" onClick={onCancel}
             className="flex-1 rounded-lg py-3 text-sm border transition-colors"
-            style={{ borderColor: '#3a2810', color: '#7a5c2a' }}>
+            style={{ borderColor: '#3a2810', color: '#c8a060' }}>
             取消
           </button>
         </div>

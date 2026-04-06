@@ -69,7 +69,7 @@ export default function TripsPage() {
           className="beast-card rounded-xl p-4 mb-4 space-y-3"
           style={{ background: '#1a1208', border: '1px solid #c8901a', boxShadow: '0 0 16px rgba(200,144,26,0.12)' }}>
           <div>
-            <label className="text-xs text-[#7a5c2a] block mb-1 uppercase tracking-wider">旅程名稱</label>
+            <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">旅程名稱</label>
             <input
               value={name}
               onChange={e => setName(e.target.value)}
@@ -79,7 +79,7 @@ export default function TripsPage() {
             />
           </div>
           <div>
-            <label className="text-xs text-[#7a5c2a] block mb-1 uppercase tracking-wider">開始日期</label>
+            <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">開始日期</label>
             <input
               type="date"
               value={startDate}
@@ -88,7 +88,7 @@ export default function TripsPage() {
             />
           </div>
           <div>
-            <label className="text-xs text-[#7a5c2a] block mb-1 uppercase tracking-wider">JPY 匯率（選填）</label>
+            <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">JPY 匯率（選填）</label>
             <input
               type="number"
               step="0.001"
@@ -106,7 +106,7 @@ export default function TripsPage() {
             </button>
             <button type="button" onClick={() => setShowForm(false)}
               className="flex-1 rounded-lg py-2.5 text-sm border transition-colors"
-              style={{ borderColor: '#3a2810', color: '#7a5c2a' }}>
+              style={{ borderColor: '#3a2810', color: '#c8a060' }}>
               取消
             </button>
           </div>
@@ -120,7 +120,7 @@ export default function TripsPage() {
             <line x1="2" y1="12" x2="22" y2="12"/>
             <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
           </svg>
-          <p className="text-sm text-[#5a3f1a]">尚無旅程記錄。點擊「新旅程」開始。</p>
+          <p className="text-sm text-[#9a7040]">尚無旅程記錄。點擊「新旅程」開始。</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -136,7 +136,7 @@ export default function TripsPage() {
                 className="beast-card rounded-xl p-4"
                 style={isActive
                   ? { background: '#1e1608', border: '1px solid #c8901a', boxShadow: '0 0 14px rgba(200,144,26,0.13)' }
-                  : { background: '#1a1208', border: '1px solid #2e2210' }}
+                  : { background: '#1a1208', border: '1px solid #3d2e14' }}
               >
                 <div className="flex items-start justify-between">
                   <div>
@@ -149,22 +149,22 @@ export default function TripsPage() {
                       )}
                       {isEnded && (
                         <span className="text-[10px] px-2 py-0.5 rounded"
-                          style={{ background: 'rgba(90,63,26,0.3)', color: '#5a3f1a', border: '1px solid #3a2810' }}>
+                          style={{ background: 'rgba(90,63,26,0.3)', color: '#9a7040', border: '1px solid #3a2810' }}>
                           已結束
                         </span>
                       )}
                       <span className="font-medium text-[#f2e8c9]">{trip.name}</span>
                     </div>
-                    <p className="text-xs text-[#5a3f1a] mt-0.5">
+                    <p className="text-xs text-[#9a7040] mt-0.5">
                       {trip.startDate}{trip.endDate ? ` — ${trip.endDate}` : ''}
                     </p>
                   </div>
                 </div>
 
                 <div className="mt-2 flex gap-4 text-sm">
-                  <span className="text-[#7a5c2a]">消費 <span className="font-medium text-[#f2e8c9]">NT${totalSpend.toLocaleString()}</span></span>
-                  <span className="text-[#7a5c2a]">回饋 <span className="font-medium" style={{ color: '#4ade80' }}>NT${totalReward.toLocaleString()}</span></span>
-                  <span className="text-[#5a3f1a]">{trip.expenses.length} 筆</span>
+                  <span className="text-[#c8a060]">消費 <span className="font-medium text-[#f2e8c9]">NT${totalSpend.toLocaleString()}</span></span>
+                  <span className="text-[#c8a060]">回饋 <span className="font-medium" style={{ color: '#4ade80' }}>NT${totalReward.toLocaleString()}</span></span>
+                  <span className="text-[#9a7040]">{trip.expenses.length} 筆</span>
                 </div>
 
                 <div className="mt-3 flex gap-2">
