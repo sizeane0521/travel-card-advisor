@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useStore } from '../store/useStore'
-import { getAllStoreNames, calcExpenseReward } from '../lib/rewardCalc'
+import { getAllStoreNames, getSortedRecommendations, calcExpenseReward } from '../lib/rewardCalc'
+import type { CardAdvice } from '../lib/rewardCalc'
 
 function todayStr(): string {
   return new Date().toISOString().slice(0, 10)
@@ -10,18 +11,59 @@ function genId(): string {
   return `exp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
 }
 
+// Estimate reward for a card from its advice + current twd amount
+function estimateReward(advice: CardAdvice, twdAmount: number): number {
+  if (advice.isFull || twdAmount <= 0) return 0
+  const raw = Math.floor(twdAmount * advice.effectiveRate / 100)
+  if (advice.card.monthlyCap.rewardLimit !== undefined) {
+    return Math.min(raw, advice.remainingAmount)
+  }
+  return raw
+}
+
+const STORE_CHIP_LIMIT = 5
+
 export default function ExpensePage() {
   const { data, dispatch } = useStore()
   const activeTrip = data.trips.find(t => t.id === data.activeTripId) ?? null
 
   const [amount, setAmount] = useState('')
-  const [cardId, setCardId] = useState(data.cards[0]?.id ?? '')
   const [store, setStore] = useState<string>('')
-  const [lastReward, setLastReward] = useState<number | null>(null)
+  // task 1.1: selectedCardId replaces cardId
+  const [selectedCardId, setSelectedCardId] = useState<string>('')
+  const [showAllStores, setShowAllStores] = useState(false)
   const [amountError, setAmountError] = useState('')
 
   const storeNames = getAllStoreNames(data.cards)
   const expenses = activeTrip ? [...activeTrip.expenses].reverse() : []
+  const tripExpenses = activeTrip?.expenses ?? []
+
+  // Exchange rate derived values
+  const exchangeRate = activeTrip?.exchangeRate
+  const parsedAmount = parseInt(amount, 10)
+  const validAmount = !isNaN(parsedAmount) && parsedAmount > 0
+  const twdAmount = validAmount
+    ? (exchangeRate ? Math.floor(parsedAmount * exchangeRate.rate) : parsedAmount)
+    : 0
+
+  // task 1.1 + 1.2: recommendations re-computed on every render (store or amount change drives it)
+  // effectiveSelectedCardId: keep user selection unless it's gone or full
+  const recommendations = data.cards.length > 0
+    ? getSortedRecommendations(data.cards, store || null, tripExpenses)
+    : []
+
+  const bestCardId = recommendations.find(a => !a.isFull)?.card.id ?? ''
+  const effectiveSelectedCardId = (() => {
+    if (!selectedCardId) return bestCardId
+    const sel = recommendations.find(a => a.card.id === selectedCardId)
+    // task 1.2: if selected card is now full, fall back to best
+    if (!sel || sel.isFull) return bestCardId
+    return selectedCardId
+  })()
+
+  // Store chip visibility
+  const visibleStores = showAllStores ? storeNames : storeNames.slice(0, STORE_CHIP_LIMIT)
+  const hasMoreStores = storeNames.length > STORE_CHIP_LIMIT
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -30,37 +72,38 @@ export default function ExpensePage() {
       setAmountError('請輸入正整數金額')
       return
     }
-    if (!cardId) return
+    if (!effectiveSelectedCardId) return
     if (!activeTrip || activeTrip.endDate) return
 
     setAmountError('')
-    const selectedCard = data.cards.find(c => c.id === cardId)!
+    const selectedCard = data.cards.find(c => c.id === effectiveSelectedCardId)!
     const storeName = store || null
 
-    // task 7.2: foreign currency conversion
-    const exchangeRate = activeTrip.exchangeRate
-    const twdAmount = exchangeRate
-      ? Math.floor(parsed * exchangeRate.rate)
-      : parsed
+    const twd = exchangeRate ? Math.floor(parsed * exchangeRate.rate) : parsed
     const foreignAmount = exchangeRate
       ? { currency: exchangeRate.currency, amount: parsed }
       : undefined
 
-    const reward = calcExpenseReward(selectedCard, twdAmount, storeName, activeTrip.expenses)
+    // task 6.1: use effectiveSelectedCardId, not cardId
+    const reward = calcExpenseReward(selectedCard, twd, storeName, activeTrip.expenses)
 
-    const expense = {
-      id: genId(),
-      amount: twdAmount,
-      cardId,
-      store: storeName,
-      date: todayStr(),
-      estimatedReward: reward,
-      ...(foreignAmount ? { foreignAmount } : {}),
-    }
+    dispatch({
+      type: 'ADD_EXPENSE',
+      tripId: activeTrip.id,
+      expense: {
+        id: genId(),
+        amount: twd,
+        cardId: effectiveSelectedCardId,
+        store: storeName,
+        date: todayStr(),
+        estimatedReward: reward,
+        ...(foreignAmount ? { foreignAmount } : {}),
+      },
+    })
 
-    dispatch({ type: 'ADD_EXPENSE', tripId: activeTrip.id, expense })
-    setLastReward(reward)
+    // task 6.1: reset amount and store, keep selectedCardId (re-ranks on next render)
     setAmount('')
+    setStore('')
   }
 
   function handleDelete(expenseId: string) {
@@ -96,72 +139,176 @@ export default function ExpensePage() {
 
   return (
     <div className="p-4 max-w-lg mx-auto">
-      <h1 className="text-lg font-semibold text-[#f2e8c9] mb-4">記帳</h1>
+      {/* task 5.1: header with trip expense count summary */}
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-lg font-semibold text-[#f2e8c9]">記帳</h1>
+        <span className="text-sm text-[#c8a060]">本次旅程 {activeTrip.expenses.length} 筆</span>
+      </div>
 
       {/* ── Log expense form ── */}
       <form onSubmit={handleSubmit}
-        className="beast-card rounded-xl p-4 mb-4 space-y-3"
+        className="beast-card rounded-xl p-4 mb-4 space-y-4"
         style={{ background: '#1a1208', border: '1px solid #3a2810' }}>
 
+        {/* Amount input + JPY preview */}
         <div>
-          {/* task 7.1: label and placeholder change when trip has exchange rate */}
           <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">
-            {activeTrip.exchangeRate ? `金額（${activeTrip.exchangeRate.currency}）` : '金額（NT$）'}
+            {exchangeRate ? `金額（${exchangeRate.currency}）` : '金額（NT$）'}
           </label>
           <input
             type="number"
             inputMode="numeric"
             value={amount}
             onChange={e => { setAmount(e.target.value); setAmountError('') }}
-            placeholder={activeTrip.exchangeRate ? '例：1500（日幣）' : '例：1200'}
+            placeholder={exchangeRate ? '例：1500（日幣）' : '例：1200'}
             className="w-full border rounded-lg px-3 py-2.5 text-lg focus:outline-none"
           />
+          {/* task 4.1: real-time JPY→TWD conversion preview */}
+          {exchangeRate && validAmount && (
+            <p className="text-sm mt-1" style={{ color: '#c8a060' }}>
+              ≈ NT${twdAmount.toLocaleString()}
+            </p>
+          )}
           {amountError && <p className="text-xs mt-1" style={{ color: '#c0392b' }}>{amountError}</p>}
         </div>
 
+        {/* task 3.1 + 3.2: store chips */}
         <div>
-          <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">信用卡</label>
-          <select
-            value={cardId}
-            onChange={e => setCardId(e.target.value)}
-            className="w-full border rounded-lg px-3 py-2.5 focus:outline-none"
-          >
-            {data.cards.map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
+          <label className="text-xs text-[#c8a060] block mb-2 uppercase tracking-wider">店家</label>
+          <div className="flex flex-wrap gap-2">
+            {/* 一般消費 chip */}
+            <button
+              type="button"
+              onClick={() => setStore('')}
+              className="px-3 py-1.5 rounded-lg text-sm border transition-all"
+              style={store === ''
+                ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a', fontWeight: 600 }
+                : { background: 'transparent', color: '#c8a060', borderColor: '#4a3418' }}
+            >
+              一般消費
+            </button>
+
+            {visibleStores.map(n => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => setStore(n)}
+                className="px-3 py-1.5 rounded-lg text-sm border transition-all"
+                style={store === n
+                  ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a', fontWeight: 600 }
+                  : { background: 'transparent', color: '#c8a060', borderColor: '#4a3418' }}
+              >
+                {n}
+              </button>
             ))}
-          </select>
+
+            {/* task 3.2: expand/collapse more stores */}
+            {hasMoreStores && (
+              <button
+                type="button"
+                onClick={() => setShowAllStores(v => !v)}
+                className="px-3 py-1.5 rounded-lg text-sm border transition-all"
+                style={{ background: 'transparent', color: '#9a7040', borderColor: '#3d2e14', borderStyle: 'dashed' }}
+              >
+                {showAllStores ? '收起 ▲' : `更多 ▼`}
+              </button>
+            )}
+          </div>
         </div>
 
-        <div>
-          <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">店家（選填）</label>
-          <select
-            value={store}
-            onChange={e => setStore(e.target.value)}
-            className="w-full border rounded-lg px-3 py-2.5 focus:outline-none"
-          >
-            <option value="">一般消費</option>
-            {storeNames.map(n => (
-              <option key={n} value={n}>{n}</option>
-            ))}
-          </select>
-        </div>
+        {/* task 2.1–2.4: inline card recommendation list */}
+        {data.cards.length > 0 && (
+          <div>
+            <label className="text-xs text-[#c8a060] block mb-2 uppercase tracking-wider">選擇信用卡（依回饋排序）</label>
+            <div className="space-y-2">
+              {recommendations.map((advice, idx) => {
+                const isSelected = advice.card.id === effectiveSelectedCardId
+                const isTop = idx === 0 && !advice.isFull
+                const estimated = estimateReward(advice, twdAmount)
+
+                // task 2.2: progress bar data
+                const cap = advice.card.monthlyCap.rewardLimit ?? advice.card.monthlyCap.spendLimit
+                const showBar = isTop && cap !== undefined && cap > 0
+                const barPct = showBar
+                  ? Math.min(100, Math.round((cap - advice.remainingAmount) / cap * 100))
+                  : 0
+
+                return (
+                  <div
+                    key={advice.card.id}
+                    onClick={() => !advice.isFull && setSelectedCardId(advice.card.id)}
+                    className="rounded-xl p-3 transition-all"
+                    style={{
+                      cursor: advice.isFull ? 'default' : 'pointer',
+                      background: isSelected ? '#1e1608' : '#141008',
+                      border: isSelected
+                        ? '1px solid #c8901a'
+                        : '1px solid #3d2e14',
+                      boxShadow: isSelected ? '0 0 10px rgba(200,144,26,0.12)' : 'none',
+                      opacity: advice.isFull ? 0.45 : 1,
+                    }}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {isTop && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold"
+                            style={{ background: 'rgba(212,160,23,0.18)', color: '#d4a017', border: '1px solid rgba(212,160,23,0.3)' }}>
+                            ◆ 推薦
+                          </span>
+                        )}
+                        <span className="text-sm font-medium text-[#f2e8c9]">{advice.card.name}</span>
+                        {advice.isFull && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded"
+                            style={{ background: 'rgba(139,26,26,0.3)', color: '#c0392b', border: '1px solid #5a1a1a' }}>
+                            本月已滿
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-right shrink-0 ml-2">
+                        {advice.isFull ? (
+                          <span className="text-sm" style={{ color: '#c0392b' }}>0%</span>
+                        ) : (
+                          <div>
+                            <span className="text-lg font-bold" style={{ color: '#d4a017' }}>{advice.effectiveRate}%</span>
+                            {twdAmount > 0 && (
+                              <p className="text-xs" style={{ color: '#4ade80' }}>
+                                回饋 NT${estimated.toLocaleString()}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* task 2.2: progress bar for top card with cap */}
+                    {showBar && (
+                      <div className="mt-2">
+                        <div className="rounded-full overflow-hidden h-1.5" style={{ background: '#2e2210' }}>
+                          <div className="h-full rounded-full transition-all"
+                            style={{ width: `${barPct}%`, background: 'linear-gradient(90deg, #c8901a, #d4a017)' }} />
+                        </div>
+                        <p className="text-xs mt-1" style={{ color: '#c8a060' }}>
+                          {advice.remainingCapDisplay}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* task 2.3: no-cap card shows only rate (handled above — no bar rendered) */}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         <button
           type="submit"
-          className="w-full rounded-lg py-3 font-semibold text-sm tracking-wider transition-all active:scale-[0.98]"
+          disabled={!effectiveSelectedCardId}
+          className="w-full rounded-lg py-3 font-semibold text-sm tracking-wider transition-all active:scale-[0.98] disabled:opacity-30"
           style={{ background: 'linear-gradient(135deg, #c8901a, #d4a017)', color: '#0d0a06' }}
         >
           ◆ 記錄消費
         </button>
-
-        {lastReward !== null && (
-          <div className="rounded-lg px-3 py-2.5 text-center"
-            style={{ background: '#0f1a0e', border: '1px solid #1a4a28' }}>
-            <p className="text-sm" style={{ color: '#4ade80' }}>
-              估算回饋：<span className="font-semibold">NT${lastReward.toLocaleString()}</span>
-            </p>
-          </div>
-        )}
       </form>
 
       {/* ── Expense list ── */}
@@ -178,7 +325,6 @@ export default function ExpensePage() {
                 style={{ background: '#1a1208', border: '1px solid #3d2e14' }}>
                 <div>
                   <p className="text-xs text-[#9a7040]">{e.date} · {e.store ?? '一般消費'}</p>
-                  {/* task 7.3: dual-amount display */}
                   <p className="font-medium text-[#f2e8c9]">
                     {e.foreignAmount
                       ? `¥${e.foreignAmount.amount.toLocaleString()} (NT$${e.amount.toLocaleString()})`

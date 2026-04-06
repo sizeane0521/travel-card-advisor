@@ -1,10 +1,4 @@
-# expense-tracker Specification
-
-## Purpose
-
-TBD - created by archiving change 'travel-card-advisor'. Update Purpose after archive.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Record a single expense
 
@@ -52,99 +46,8 @@ After submission, the form SHALL reset the amount to empty and the store selecti
 - **WHEN** user enters 0 or a negative number
 - **THEN** the system SHALL prevent saving and display a validation error
 
+## ADDED Requirements
 
-<!-- @trace
-source: smart-expense-entry
-updated: 2026-04-06
-code:
-  - src/pages/ExpensePage.tsx
--->
-
----
-### Requirement: Reward estimation on save
-
-After saving an expense, the system SHALL display an estimated reward amount calculated as: `expense amount × effective rate` for the chosen card and store at the time of logging.
-
-#### Scenario: Show reward estimate after logging
-
-- **WHEN** user logs NT$2000 to a card with 3% base rate and no store bonus
-- **THEN** the system SHALL display "Estimated reward: NT$60"
-
-#### Scenario: Reward capped at remaining cap
-
-- **WHEN** a card's remaining reward cap is NT$50 and the user logs NT$3000 at 3% (which would yield NT$90)
-- **THEN** the displayed estimate SHALL be NT$50 (capped, not NT$90)
-
----
-### Requirement: Monthly spend accumulation
-
-The system SHALL aggregate all expense amounts per card per calendar month and expose the total as the card's "current month spend" for use by the card-advisor capability.
-
-#### Scenario: Monthly total updates after logging
-
-- **WHEN** user logs a new expense of NT$500 to Card A
-- **THEN** Card A's current month total SHALL increase by NT$500
-
-#### Scenario: Expenses from different months not aggregated
-
-- **WHEN** Card A has NT$10000 logged in June and NT$5000 in July
-- **THEN** Card A's July monthly total SHALL be NT$5000, not NT$15000
-
----
-### Requirement: Expense list view
-
-The system SHALL display a chronological list of all expenses within the active trip, showing date, store, card name, amount, and estimated reward for each entry.
-
-#### Scenario: Expense list shows all active trip entries
-
-- **WHEN** user navigates to the expense list
-- **THEN** all expenses belonging to the active trip SHALL be displayed in reverse chronological order
-
----
-### Requirement: Delete expense
-
-The system SHALL allow users to delete any individual expense record from the active trip. Deletion SHALL immediately update the monthly spend totals and card recommendations.
-
-#### Scenario: Delete expense updates totals
-
-- **WHEN** user deletes an expense of NT$1200 from Card A
-- **THEN** Card A's current month total SHALL decrease by NT$1200
-- **THEN** the card recommendation list SHALL recalculate and update
-
----
-### Requirement: Activity-period cap tracking
-
-The system SHALL track store bonus caps with `capPeriod: "period"` across the entire promotion validity period of the card (from `Card.validFrom` to `Card.validTo`), not just the current calendar month.
-
-For a store bonus rule with `capPeriod: "period"`, the system SHALL sum all expenses matching that store bonus across the active trip (regardless of calendar month) to determine remaining cap. Once the activity-period cap is exhausted within the trip, the bonus rate SHALL no longer apply for that store rule for the remainder of the trip.
-
-For a store bonus rule with `capPeriod: "monthly"`, existing monthly-reset behavior SHALL apply unchanged.
-
-#### Scenario: Period cap accumulates across months within a trip
-
-- **WHEN** a store bonus rule has `capPeriod: "period"` with `cap: 600` (NTD reward cap) and the user has already earned NT$400 in rewards from that rule in January
-- **THEN** in February of the same trip, the remaining cap for that rule SHALL be NT$200 (not reset to NT$600)
-
-#### Scenario: Monthly cap resets each month
-
-- **WHEN** a store bonus rule has `capPeriod: "monthly"` with `cap: 600`
-- **THEN** at the start of a new calendar month, the accumulated spend for that rule SHALL reset to zero
-
-<!-- @trace
-source: enhance-card-import-and-currency
-updated: 2026-04-06
-code:
-  - src/lib/cardImport.ts
-  - src/types/index.ts
-  - src/pages/SettingsPage.tsx
-  - src/components/CardForm.tsx
-  - src/lib/rewardCalc.ts
-  - src/pages/ExpensePage.tsx
-  - src/store/storage.ts
-  - src/pages/TripsPage.tsx
--->
-
----
 ### Requirement: Inline card recommendation during expense entry
 
 The expense entry form SHALL display a live-sorted list of all configured cards, ranked by effective reward rate for the currently selected store and entered amount. The list SHALL update immediately when the amount or store changes (no submit required). The top-ranked non-full card SHALL be highlighted as the auto-selected card. All other cards SHALL be shown below in order with their effective rate and, if a cap exists, a text showing the remaining cap amount.
@@ -183,15 +86,8 @@ Cards with `isFull: true` SHALL appear at the bottom of the list with a "本月�
 - **THEN** that card SHALL become the confirmed selection (visually highlighted)
 - **THEN** submitting SHALL record the expense with the user-selected card
 
-
-<!-- @trace
-source: smart-expense-entry
-updated: 2026-04-06
-code:
-  - src/pages/ExpensePage.tsx
--->
-
 ---
+
 ### Requirement: Store chip selection in expense form
 
 The expense entry form SHALL display store names from `getAllStoreNames(cards)` as tappable chip buttons. The chip list SHALL show at most 5 store chips by default. If more than 5 stores are available, a "更多 ▼" button SHALL appear; tapping it SHALL expand to show all remaining store chips. A "一般消費" chip SHALL always be present and represent store = null.
@@ -212,15 +108,8 @@ The expense entry form SHALL display store names from `getAllStoreNames(cards)` 
 - **WHEN** user taps "一般消費" chip
 - **THEN** store selection SHALL be set to null and card list SHALL recalculate using base rates
 
-
-<!-- @trace
-source: smart-expense-entry
-updated: 2026-04-06
-code:
-  - src/pages/ExpensePage.tsx
--->
-
 ---
+
 ### Requirement: Trip expense count summary
 
 The expense entry page header SHALL display the total number of expense records in the active trip as a summary badge (e.g. "本次旅程 N 筆"). The count SHALL update immediately after each expense is added or deleted.
@@ -234,10 +123,3 @@ The expense entry page header SHALL display the total number of expense records 
 
 - **WHEN** user adds a new expense
 - **THEN** the count SHALL increment by 1 immediately without requiring a page reload
-
-<!-- @trace
-source: smart-expense-entry
-updated: 2026-04-06
-code:
-  - src/pages/ExpensePage.tsx
--->
