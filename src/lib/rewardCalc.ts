@@ -1,16 +1,10 @@
-import type { Card, Expense } from '../types';
+import type { Card, StoreBonus, Expense } from '../types';
 
-/**
- * Returns YYYY-MM prefix for a date string or today.
- */
 function monthPrefix(date?: string): string {
   const d = date ? new Date(date) : new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
-/**
- * Sum of expenses for a card in the current calendar month (within a trip's expenses).
- */
 export function getMonthlySpend(expenses: Expense[], cardId: string, monthStr?: string): number {
   const month = monthStr ?? monthPrefix();
   return expenses
@@ -18,9 +12,6 @@ export function getMonthlySpend(expenses: Expense[], cardId: string, monthStr?: 
     .reduce((sum, e) => sum + e.amount, 0);
 }
 
-/**
- * Sum of estimated rewards for a card in the current calendar month.
- */
 export function getMonthlyReward(expenses: Expense[], cardId: string, monthStr?: string): number {
   const month = monthStr ?? monthPrefix();
   return expenses
@@ -30,17 +21,24 @@ export function getMonthlyReward(expenses: Expense[], cardId: string, monthStr?:
 
 export interface CardAdvice {
   card: Card;
-  effectiveRate: number;    // 0–100 (percentage)
-  isFull: boolean;          // monthly cap reached
-  remainingCapDisplay: string; // human-readable remaining
-  remainingAmount: number;  // NTD remaining before cap
+  effectiveRate: number;
+  isFull: boolean;
+  remainingCapDisplay: string;
+  remainingAmount: number;
 }
 
 /**
- * Calculate effective reward rate for a card given a store and current month expenses.
- * Supports dual-cap model: rewardLimit (hard ceiling on reward earned) and
- * spendLimit (spend threshold beyond which rate falls back to baseRate).
+ * task 5.2: Find matching StoreBonus for a store name.
+ * First tries exact match on storeName, then searches stores[] arrays.
  */
+function findStoreBonus(card: Card, storeName: string): StoreBonus | null {
+  // Exact category name match
+  const byCategory = card.storeBonus.find(b => b.storeName === storeName);
+  if (byCategory) return byCategory;
+  // Search actual store names in stores[] arrays
+  return card.storeBonus.find(b => (b.stores ?? []).includes(storeName)) ?? null;
+}
+
 export function calcCardAdvice(
   card: Card,
   storeName: string | null,
@@ -52,36 +50,31 @@ export function calcCardAdvice(
   const monthlyReward = getMonthlyReward(tripExpenses, card.id, month);
   const { rewardLimit, spendLimit } = card.monthlyCap;
 
-  // Check rewardLimit (hard ceiling) — takes priority
   if (rewardLimit !== undefined && monthlyReward >= rewardLimit) {
-    return {
-      card,
-      effectiveRate: 0,
-      isFull: true,
-      remainingCapDisplay: 'NT$0 回饋剩餘',
-      remainingAmount: 0,
-    };
+    return { card, effectiveRate: 0, isFull: true, remainingCapDisplay: 'NT$0 回饋剩餘', remainingAmount: 0 };
   }
 
-  // Determine applicable rate, factoring in spendLimit and store bonus
   let applicableRate = card.baseRate;
   const spendCapReached = spendLimit !== undefined && monthlySpend >= spendLimit;
 
-  if (!spendCapReached) {
-    const bonus = storeName
-      ? card.storeBonus.find(b => b.storeName === storeName)
-      : null;
+  if (!spendCapReached && storeName) {
+    const bonus = findStoreBonus(card, storeName);
     if (bonus) {
-      const storeSpend = tripExpenses
-        .filter(e => e.cardId === card.id && e.store === storeName && e.date.startsWith(month))
-        .reduce((sum, e) => sum + e.amount, 0);
-      if (storeSpend < bonus.cap) {
+      // task 5.1: period cap uses all trip expenses; monthly cap uses current month only
+      const storeSpend = bonus.capPeriod === 'period'
+        ? tripExpenses
+            .filter(e => e.cardId === card.id && findStoreBonus(card, e.store ?? '') === bonus)
+            .reduce((sum, e) => sum + e.amount, 0)
+        : tripExpenses
+            .filter(e => e.cardId === card.id && e.store === storeName && e.date.startsWith(month))
+            .reduce((sum, e) => sum + e.amount, 0);
+
+      if (bonus.cap === 0 || storeSpend < bonus.cap) {
         applicableRate = bonus.rate;
       }
     }
   }
 
-  // Build remainingCapDisplay — rewardLimit takes priority when both are set
   let remainingCapDisplay = '';
   let remainingAmount = 0;
 
@@ -95,19 +88,9 @@ export function calcCardAdvice(
       : `NT$${remainingAmount.toLocaleString()} 消費額度剩餘`;
   }
 
-  return {
-    card,
-    effectiveRate: applicableRate,
-    isFull: false,
-    remainingCapDisplay,
-    remainingAmount,
-  };
+  return { card, effectiveRate: applicableRate, isFull: false, remainingCapDisplay, remainingAmount };
 }
 
-/**
- * Calculate estimated reward for a single expense amount on a card/store,
- * capped by remaining monthly cap.
- */
 export function calcExpenseReward(
   card: Card,
   amount: number,
@@ -120,7 +103,6 @@ export function calcExpenseReward(
 
   const rawReward = Math.floor((amount * advice.effectiveRate) / 100);
 
-  // Cap earned reward if rewardLimit is set
   if (card.monthlyCap.rewardLimit !== undefined) {
     return Math.min(rawReward, advice.remainingAmount);
   }
@@ -128,10 +110,6 @@ export function calcExpenseReward(
   return rawReward;
 }
 
-/**
- * Get sorted card recommendations for a store.
- * Returns cards sorted by effectiveRate descending, full cards at bottom.
- */
 export function getSortedRecommendations(
   cards: Card[],
   storeName: string | null,
@@ -147,13 +125,17 @@ export function getSortedRecommendations(
 }
 
 /**
- * Get all unique store names from all cards' store bonus rules.
+ * task 5.3: Returns all unique store names — both category names (storeName)
+ * and individual stores from stores[] arrays — sorted alphabetically.
  */
 export function getAllStoreNames(cards: Card[]): string[] {
   const names = new Set<string>();
   for (const card of cards) {
     for (const bonus of card.storeBonus) {
       names.add(bonus.storeName);
+      for (const store of (bonus.stores ?? [])) {
+        names.add(store);
+      }
     }
   }
   return Array.from(names).sort();

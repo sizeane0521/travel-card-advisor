@@ -103,13 +103,34 @@ export default function SettingsPage() {
         </div>
       ) : (
         <div className="space-y-3 mb-6">
-          {data.cards.map(card => (
+          {data.cards.map(card => {
+            // task 4.4: Promotion expiry indicator
+            const today = new Date(); today.setHours(0,0,0,0)
+            const sevenDaysLater = new Date(today); sevenDaysLater.setDate(today.getDate() + 7)
+            const expiryDate = card.validTo ? new Date(card.validTo) : null
+            const isExpired = expiryDate ? expiryDate < today : false
+            const isExpiringSoon = expiryDate ? (expiryDate >= today && expiryDate <= sevenDaysLater) : false
+            return (
             <div key={card.id}
               className="beast-card rounded-xl p-4"
               style={{ background: '#1a1208', border: '1px solid #2e2210' }}>
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-[#f2e8c9]">{card.name}</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-medium text-[#f2e8c9]">{card.name}</p>
+                    {isExpired && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded"
+                        style={{ background: 'rgba(139,26,26,0.3)', color: '#c0392b', border: '1px solid #5a1a1a' }}>
+                        活動已結束
+                      </span>
+                    )}
+                    {isExpiringSoon && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded"
+                        style={{ background: 'rgba(180,120,0,0.2)', color: '#d4a017', border: '1px solid #5a3010' }}>
+                        即將到期
+                      </span>
+                    )}
+                  </div>
                   <p className="text-sm text-[#7a5c2a] mt-0.5">
                     海外 {card.baseRate}%
                     {card.monthlyCap.rewardLimit !== undefined && ` · 回饋上限 NT$${card.monthlyCap.rewardLimit.toLocaleString()}`}
@@ -147,7 +168,8 @@ export default function SettingsPage() {
                 </div>
               </div>
             </div>
-          ))}
+            )
+          })}
         </div>
       )}
 

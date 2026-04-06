@@ -29,11 +29,27 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
   const [baseRate, setBaseRate] = useState(String(card?.baseRate ?? ''))
   const [rewardCap, setRewardCap] = useState(card?.monthlyCap.rewardLimit !== undefined ? String(card.monthlyCap.rewardLimit) : '')
   const [spendCap, setSpendCap] = useState(card?.monthlyCap.spendLimit !== undefined ? String(card.monthlyCap.spendLimit) : '')
-  const [bonuses, setBonuses] = useState<StoreBonus[]>(card?.storeBonus ?? [])
+  const [validFrom, setValidFrom] = useState(card?.validFrom ?? '')
+  const [validTo, setValidTo] = useState(card?.validTo ?? '')
+  const [bonuses, setBonuses] = useState<StoreBonus[]>(
+    (card?.storeBonus ?? []).map(b => ({
+      ...b,
+      stores: b.stores ?? [],
+      capPeriod: b.capPeriod ?? 'monthly',
+    }))
+  )
+
+  // New bonus form state
   const [newBonusStore, setNewBonusStore] = useState('')
   const [newBonusRate, setNewBonusRate] = useState('')
   const [newBonusCap, setNewBonusCap] = useState('')
+  const [newBonusCapPeriod, setNewBonusCapPeriod] = useState<'monthly' | 'period'>('monthly')
 
+  // Store alias management: track which bonus index is expanded
+  const [expandedAliasIdx, setExpandedAliasIdx] = useState<number | null>(null)
+  const [newAliasInput, setNewAliasInput] = useState('')
+
+  // Import panel state
   const [showImportPanel, setShowImportPanel] = useState(false)
   const [importUrl, setImportUrl] = useState('')
   const [showHtmlFallback, setShowHtmlFallback] = useState(false)
@@ -54,18 +70,40 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
     if (!newBonusStore.trim() || !newBonusRate || !newBonusCap) return
     setBonuses(prev => [...prev, {
       storeName: newBonusStore.trim(),
+      stores: [],
       rate: parseFloat(newBonusRate),
       cap: parseInt(newBonusCap, 10),
+      capPeriod: newBonusCapPeriod,
     }])
     setNewBonusStore('')
     setNewBonusRate('')
     setNewBonusCap('')
+    setNewBonusCapPeriod('monthly')
   }
 
   function removeBonus(idx: number) {
     setBonuses(prev => prev.filter((_, i) => i !== idx))
+    if (expandedAliasIdx === idx) setExpandedAliasIdx(null)
   }
 
+  function addAlias(idx: number) {
+    const alias = newAliasInput.trim()
+    if (!alias) return
+    setBonuses(prev => prev.map((b, i) =>
+      i === idx && !b.stores.includes(alias)
+        ? { ...b, stores: [...b.stores, alias] }
+        : b
+    ))
+    setNewAliasInput('')
+  }
+
+  function removeAlias(bonusIdx: number, alias: string) {
+    setBonuses(prev => prev.map((b, i) =>
+      i === bonusIdx ? { ...b, stores: b.stores.filter(s => s !== alias) } : b
+    ))
+  }
+
+  // task 3.4: map new CardImportResult structure to form state
   function applyImportResult(result: CardImportResult) {
     const missing: string[] = []
     if (result.cardName) setName(result.cardName); else missing.push('卡片名稱')
@@ -73,11 +111,15 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
     if (result.rewardCap !== null) setRewardCap(String(result.rewardCap))
     if (result.spendCap !== null) setSpendCap(String(result.spendCap))
     if (result.rewardCap === null && result.spendCap === null) missing.push('每月上限金額')
+    if (result.validFrom) setValidFrom(result.validFrom)
+    if (result.validTo) setValidTo(result.validTo)
     if (result.storeRules.length > 0) {
       setBonuses(result.storeRules.map(r => ({
-        storeName: r.storeName,
+        storeName: r.categoryName,
+        stores: r.stores,
         rate: r.bonusRate,
         cap: r.spendCap,
+        capPeriod: r.capPeriod,
       })))
     }
     setMissingFields(missing)
@@ -146,6 +188,8 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
       baseRate: parseFloat(baseRate),
       monthlyCap,
       storeBonus: bonuses,
+      validFrom: validFrom || undefined,
+      validTo: validTo || undefined,
     })
   }
 
@@ -287,16 +331,31 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
               type="number" step="0.1" min="0" max="100" placeholder="例：3" className={inputClass} />
           </div>
 
-          <div>
-            <label className="text-xs text-[#7a5c2a] block mb-1 uppercase tracking-wider">每月回饋上限（選填）NT$</label>
-            <input value={rewardCap} onChange={e => setRewardCap(e.target.value)}
-              type="number" min="0" placeholder="例：1500（最多拿 NT$1,500 回饋）" className={inputClass} />
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <label className="text-xs text-[#7a5c2a] block mb-1 uppercase tracking-wider">每月回饋上限（NT$）</label>
+              <input value={rewardCap} onChange={e => setRewardCap(e.target.value)}
+                type="number" min="0" placeholder="例：1500" className={inputClass} />
+            </div>
+            <div className="flex-1">
+              <label className="text-xs text-[#7a5c2a] block mb-1 uppercase tracking-wider">每月消費上限（NT$）</label>
+              <input value={spendCap} onChange={e => setSpendCap(e.target.value)}
+                type="number" min="0" placeholder="例：50000" className={inputClass} />
+            </div>
           </div>
 
-          <div>
-            <label className="text-xs text-[#7a5c2a] block mb-1 uppercase tracking-wider">每月消費金額上限（選填）NT$</label>
-            <input value={spendCap} onChange={e => setSpendCap(e.target.value)}
-              type="number" min="0" placeholder="例：50000（超過後改以基本回饋計算）" className={inputClass} />
+          {/* task 4.3: validFrom / validTo */}
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <label className="text-xs text-[#7a5c2a] block mb-1 uppercase tracking-wider">活動開始日（選填）</label>
+              <input value={validFrom} onChange={e => setValidFrom(e.target.value)}
+                type="date" className={inputClass} />
+            </div>
+            <div className="flex-1">
+              <label className="text-xs text-[#7a5c2a] block mb-1 uppercase tracking-wider">活動結束日（選填）</label>
+              <input value={validTo} onChange={e => setValidTo(e.target.value)}
+                type="date" className={inputClass} />
+            </div>
           </div>
         </div>
 
@@ -305,30 +364,98 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
           <h3 className="text-xs font-semibold text-[#7a5c2a] mb-3 uppercase tracking-widest">特定店家加碼</h3>
 
           {bonuses.map((b, i) => (
-            <div key={i}
-              className="flex items-center justify-between py-2"
-              style={{ borderBottom: '1px solid #2e2210' }}>
-              <div className="text-sm">
-                <span className="font-medium text-[#f2e8c9]">{b.storeName}</span>
-                <span className="text-[#7a5c2a] ml-2">{b.rate}% · 上限 NT${b.cap.toLocaleString()}</span>
+            <div key={i} className="mb-3 pb-3" style={{ borderBottom: '1px solid #2e2210' }}>
+              <div className="flex items-start justify-between">
+                <div className="text-sm flex-1 min-w-0">
+                  <span className="font-medium text-[#f2e8c9]">{b.storeName}</span>
+                  <span className="text-[#7a5c2a] ml-2">
+                    {b.rate}% · 上限 NT${b.cap.toLocaleString()}
+                    <span className="ml-1 text-xs px-1.5 py-0.5 rounded"
+                      style={{ background: 'rgba(200,144,26,0.1)', color: '#8a6f28' }}>
+                      {b.capPeriod === 'period' ? '活動期間' : '每月'}
+                    </span>
+                  </span>
+                  {/* store aliases chips */}
+                  {b.stores.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {b.stores.map(s => (
+                        <span key={s} className="text-xs flex items-center gap-0.5 px-1.5 py-0.5 rounded"
+                          style={{ background: 'rgba(90,63,26,0.3)', color: '#b89444', border: '1px solid #3a2810' }}>
+                          {s}
+                          <button type="button" onClick={() => removeAlias(i, s)}
+                            className="ml-0.5 opacity-60 hover:opacity-100 text-[10px]">✕</button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-2 ml-2 shrink-0">
+                  <button type="button"
+                    onClick={() => { setExpandedAliasIdx(expandedAliasIdx === i ? null : i); setNewAliasInput('') }}
+                    className="text-xs transition-colors" style={{ color: '#c8901a' }}>
+                    {expandedAliasIdx === i ? '收起' : '＋店家'}
+                  </button>
+                  <button type="button" onClick={() => removeBonus(i)}
+                    className="text-xs transition-colors" style={{ color: '#8b1a1a' }}>刪除</button>
+                </div>
               </div>
-              <button type="button" onClick={() => removeBonus(i)}
-                className="text-xs transition-colors" style={{ color: '#8b1a1a' }}>刪除</button>
+
+              {/* task 4.2: store alias management inline */}
+              {expandedAliasIdx === i && (
+                <div className="mt-2 flex gap-2">
+                  <input
+                    value={newAliasInput}
+                    onChange={e => setNewAliasInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addAlias(i) } }}
+                    placeholder="輸入實際店家名稱"
+                    className="flex-1 border rounded-lg px-2 py-1 text-xs focus:outline-none"
+                  />
+                  <button type="button" onClick={() => addAlias(i)}
+                    className="text-xs px-2 py-1 rounded transition-colors"
+                    style={{ background: '#2e2210', color: '#b89444', border: '1px solid #3a2810' }}>
+                    加入
+                  </button>
+                </div>
+              )}
             </div>
           ))}
 
-          <div className="mt-3 space-y-2">
-            <input value={newBonusStore} onChange={e => setNewBonusStore(e.target.value)}
-              placeholder="店家名稱（例：唐吉軻德）" className={inputClass + ' text-sm'} />
+          {/* New bonus form */}
+          <div className="mt-2 space-y-2">
+            <input
+              value={newBonusStore}
+              onChange={e => setNewBonusStore(e.target.value)}
+              placeholder="通路名稱（例：熱門商店）"
+              className={inputClass + ' text-sm'}
+            />
             <div className="flex gap-2">
               <input value={newBonusRate} onChange={e => setNewBonusRate(e.target.value)}
                 type="number" step="0.1" min="0" placeholder="加碼 %"
                 className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none" />
               <input value={newBonusCap} onChange={e => setNewBonusCap(e.target.value)}
-                type="number" min="0" placeholder="消費上限 NT$"
+                type="number" min="0" placeholder="上限 NT$"
                 className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none" />
+            </div>
+            {/* task 4.1: capPeriod selector */}
+            <div className="flex gap-2">
+              <button type="button"
+                onClick={() => setNewBonusCapPeriod('monthly')}
+                className="flex-1 py-1.5 rounded text-xs border transition-all"
+                style={newBonusCapPeriod === 'monthly'
+                  ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a' }
+                  : { background: 'transparent', color: '#7a5c2a', borderColor: '#3a2810' }}>
+                每月重置
+              </button>
+              <button type="button"
+                onClick={() => setNewBonusCapPeriod('period')}
+                className="flex-1 py-1.5 rounded text-xs border transition-all"
+                style={newBonusCapPeriod === 'period'
+                  ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a' }
+                  : { background: 'transparent', color: '#7a5c2a', borderColor: '#3a2810' }}>
+                活動期間
+              </button>
               <button type="button" onClick={addBonus}
-                className="text-sm px-3 py-2 rounded transition-colors"
+                className="text-sm px-3 py-1.5 rounded transition-colors"
                 style={{ background: '#2e2210', color: '#b89444', border: '1px solid #3a2810' }}>
                 新增
               </button>

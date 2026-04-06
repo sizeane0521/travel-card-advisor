@@ -1,7 +1,9 @@
 export interface StoreBonus {
   storeName: string;
-  rate: number;      // percentage, e.g. 5.0 = 5%
-  cap: number;       // spend amount cap in NTD for this store bonus
+  stores: string[];           // actual store names (e.g. ["唐吉訶德", "FamilyMart"])
+  rate: number;               // percentage, e.g. 5.0 = 5%
+  cap: number;                // spend cap in NTD for this store bonus
+  capPeriod: 'monthly' | 'period'; // 'monthly' resets each month; 'period' = entire promotion period
 }
 
 export interface MonthlyCap {
@@ -16,15 +18,18 @@ export interface Card {
   baseRate: number;        // percentage, e.g. 3.0 = 3%
   monthlyCap: MonthlyCap;
   storeBonus: StoreBonus[];
+  validFrom?: string;      // promotion start date YYYY-MM-DD
+  validTo?: string;        // promotion end date YYYY-MM-DD
 }
 
 export interface Expense {
   id: string;
-  amount: number;          // NTD, positive integer
+  amount: number;          // NTD, positive integer (converted from foreign if applicable)
   cardId: string;
   store: string | null;    // store name or null for general purchase
   date: string;            // ISO date string YYYY-MM-DD
   estimatedReward: number; // NTD reward estimated at time of logging
+  foreignAmount?: { currency: string; amount: number }; // original foreign currency amount
 }
 
 export interface Trip {
@@ -33,6 +38,7 @@ export interface Trip {
   startDate: string;       // YYYY-MM-DD
   endDate: string | null;  // null = active trip
   expenses: Expense[];
+  exchangeRate?: { currency: string; rate: number }; // e.g. { currency: 'JPY', rate: 0.22 }
 }
 
 export interface AppData {

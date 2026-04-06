@@ -36,15 +36,26 @@ export default function ExpensePage() {
     setAmountError('')
     const selectedCard = data.cards.find(c => c.id === cardId)!
     const storeName = store || null
-    const reward = calcExpenseReward(selectedCard, parsed, storeName, activeTrip.expenses)
+
+    // task 7.2: foreign currency conversion
+    const exchangeRate = activeTrip.exchangeRate
+    const twdAmount = exchangeRate
+      ? Math.floor(parsed * exchangeRate.rate)
+      : parsed
+    const foreignAmount = exchangeRate
+      ? { currency: exchangeRate.currency, amount: parsed }
+      : undefined
+
+    const reward = calcExpenseReward(selectedCard, twdAmount, storeName, activeTrip.expenses)
 
     const expense = {
       id: genId(),
-      amount: parsed,
+      amount: twdAmount,
       cardId,
       store: storeName,
       date: todayStr(),
       estimatedReward: reward,
+      ...(foreignAmount ? { foreignAmount } : {}),
     }
 
     dispatch({ type: 'ADD_EXPENSE', tripId: activeTrip.id, expense })
@@ -93,13 +104,16 @@ export default function ExpensePage() {
         style={{ background: '#1a1208', border: '1px solid #3a2810' }}>
 
         <div>
-          <label className="text-xs text-[#7a5c2a] block mb-1 uppercase tracking-wider">金額（NT$）</label>
+          {/* task 7.1: label and placeholder change when trip has exchange rate */}
+          <label className="text-xs text-[#7a5c2a] block mb-1 uppercase tracking-wider">
+            {activeTrip.exchangeRate ? `金額（${activeTrip.exchangeRate.currency}）` : '金額（NT$）'}
+          </label>
           <input
             type="number"
             inputMode="numeric"
             value={amount}
             onChange={e => { setAmount(e.target.value); setAmountError('') }}
-            placeholder="例：1200"
+            placeholder={activeTrip.exchangeRate ? '例：1500（日幣）' : '例：1200'}
             className="w-full border rounded-lg px-3 py-2.5 text-lg focus:outline-none"
           />
           {amountError && <p className="text-xs mt-1" style={{ color: '#c0392b' }}>{amountError}</p>}
@@ -164,7 +178,12 @@ export default function ExpensePage() {
                 style={{ background: '#1a1208', border: '1px solid #2e2210' }}>
                 <div>
                   <p className="text-xs text-[#5a3f1a]">{e.date} · {e.store ?? '一般消費'}</p>
-                  <p className="font-medium text-[#f2e8c9]">NT${e.amount.toLocaleString()}</p>
+                  {/* task 7.3: dual-amount display */}
+                  <p className="font-medium text-[#f2e8c9]">
+                    {e.foreignAmount
+                      ? `¥${e.foreignAmount.amount.toLocaleString()} (NT$${e.amount.toLocaleString()})`
+                      : `NT$${e.amount.toLocaleString()}`}
+                  </p>
                   <p className="text-xs text-[#7a5c2a]">{card?.name ?? e.cardId} · 回饋 <span style={{ color: '#4ade80' }}>NT${e.estimatedReward.toLocaleString()}</span></p>
                 </div>
                 <button

@@ -14,12 +14,17 @@ export default function TripsPage() {
   const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
   const [startDate, setStartDate] = useState(todayStr())
+  const [exchangeRateInput, setExchangeRateInput] = useState('')
 
   const sortedTrips = [...data.trips].reverse()
 
   function handleCreate(e: React.FormEvent) {
     e.preventDefault()
     if (!name.trim()) return
+    const rateNum = parseFloat(exchangeRateInput)
+    const exchangeRate = !isNaN(rateNum) && rateNum > 0
+      ? { currency: 'JPY', rate: rateNum }
+      : undefined
     dispatch({
       type: 'ADD_TRIP',
       trip: {
@@ -28,10 +33,12 @@ export default function TripsPage() {
         startDate,
         endDate: null,
         expenses: [],
+        ...(exchangeRate ? { exchangeRate } : {}),
       },
     })
     setName('')
     setStartDate(todayStr())
+    setExchangeRateInput('')
     setShowForm(false)
   }
 
@@ -77,6 +84,17 @@ export default function TripsPage() {
               type="date"
               value={startDate}
               onChange={e => setStartDate(e.target.value)}
+              className="w-full border rounded-lg px-3 py-2 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-[#7a5c2a] block mb-1 uppercase tracking-wider">JPY 匯率（選填）</label>
+            <input
+              type="number"
+              step="0.001"
+              value={exchangeRateInput}
+              onChange={e => setExchangeRateInput(e.target.value)}
+              placeholder="例：0.22（1 JPY = NT$0.22）"
               className="w-full border rounded-lg px-3 py-2 focus:outline-none"
             />
           </div>

@@ -5,7 +5,15 @@ export interface CardImportResult {
   baseRate: number | null
   rewardCap: number | null
   spendCap: number | null
-  storeRules: { storeName: string; bonusRate: number; spendCap: number }[]
+  validFrom: string | null
+  validTo: string | null
+  storeRules: {
+    categoryName: string
+    stores: string[]
+    bonusRate: number
+    spendCap: number
+    capPeriod: 'monthly' | 'period'
+  }[]
 }
 
 // ── Fetch page HTML via CORS proxy ─────────────────────────────────────────
@@ -47,7 +55,7 @@ export function cleanHtml(html: string): string {
   return text.slice(0, 30000)
 }
 
-// ── Parse Claude/Gemini response ───────────────────────────────────────────
+// ── Parse AI response ──────────────────────────────────────────────────────
 
 export function parseClaudeResponse(raw: string): CardImportResult | null {
   try {
@@ -60,13 +68,18 @@ export function parseClaudeResponse(raw: string): CardImportResult | null {
     const storeRules: CardImportResult['storeRules'] = []
     if (Array.isArray(parsed.storeRules)) {
       for (const rule of parsed.storeRules) {
-        if (rule && typeof rule.storeName === 'string' && rule.storeName) {
-          storeRules.push({
-            storeName: rule.storeName,
-            bonusRate: typeof rule.bonusRate === 'number' ? rule.bonusRate : 0,
-            spendCap: typeof rule.spendCap === 'number' ? rule.spendCap : 0,
-          })
-        }
+        if (!rule || typeof rule !== 'object') continue
+        const categoryName = typeof rule.categoryName === 'string' ? rule.categoryName : ''
+        if (!categoryName) continue
+        storeRules.push({
+          categoryName,
+          stores: Array.isArray(rule.stores)
+            ? rule.stores.filter((s: unknown) => typeof s === 'string')
+            : [],
+          bonusRate: typeof rule.bonusRate === 'number' ? rule.bonusRate : 0,
+          spendCap: typeof rule.spendCap === 'number' ? rule.spendCap : 0,
+          capPeriod: rule.capPeriod === 'period' ? 'period' : 'monthly',
+        })
       }
     }
 
@@ -75,6 +88,8 @@ export function parseClaudeResponse(raw: string): CardImportResult | null {
       baseRate: typeof parsed.baseRate === 'number' ? parsed.baseRate : null,
       rewardCap: typeof parsed.rewardCap === 'number' ? parsed.rewardCap : null,
       spendCap: typeof parsed.spendCap === 'number' ? parsed.spendCap : null,
+      validFrom: typeof parsed.validFrom === 'string' ? parsed.validFrom : null,
+      validTo: typeof parsed.validTo === 'string' ? parsed.validTo : null,
       storeRules,
     }
   } catch {
@@ -97,7 +112,7 @@ async function callClaude(prompt: string, apiKey: string): Promise<string> {
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1024,
+        max_tokens: 2048,
         messages: [{ role: 'user', content: prompt }],
       }),
     })
@@ -142,23 +157,57 @@ export async function parseCardFromHtml(
 
   const prompt = `你是信用卡回饋資訊擷取助手。請從以下網頁文字內容中，擷取信用卡的回饋資訊，並以 JSON 格式回傳。
 
-請嚴格回傳以下 JSON 格式，找不到的欄位填 null，不要加任何額外說明：
+請嚴格回傳以下 JSON 格式，找不到的欄位填 null 或空陣列，不要加任何額外說明：
 
 {
   "cardName": "信用卡名稱（字串）或 null",
   "baseRate": 海外一般消費回饋率（數字，例如 3.0 代表 3%）或 null,
-  "rewardCap": 每月回饋金上限（整數，新台幣，例如 1500 代表最多拿 NT$1,500 回饋）或 null,
-  "spendCap": 每月加碼消費上限（整數，新台幣，例如 50000 代表消費超過 NT$50,000 後改以基本回饋計算）或 null,
+  "rewardCap": 每月回饋金上限（整數，新台幣）或 null,
+  "spendCap": 每月加碼消費上限（整數，新台幣）或 null,
+  "validFrom": "活動開始日期（YYYY-MM-DD 格式）或 null",
+  "validTo": "活動結束日期（YYYY-MM-DD 格式）或 null",
   "storeRules": [
     {
-      "storeName": "店家或品牌名稱",
-      "bonusRate": 加碼回饋率（數字，例如 5.0 代表 5%）,
-      "spendCap": 該店家每月消費上限（整數，新台幣，找不到填 0）
+      "categoryName": "銀行定義的加碼通路名稱（例如：熱門商店、行動支付加碼）",
+      "stores": ["實際店家名稱1", "實際店家名稱2"],
+      "bonusRate": 加碼回饋率（數字，例如 3.0 代表 3%）,
+      "spendCap": 此通路的消費上限（整數，新台幣，找不到填 0）,
+      "capPeriod": "monthly 或 period（monthly=每月重置；period=整個活動期間只算一次）"
     }
   ]
 }
 
-注意：rewardCap 和 spendCap 可以同時存在。例如「海外消費最高 5%，加碼通路消費上限 NT$30,000，每月回饋上限 NT$1,500」應回傳 rewardCap: 1500, spendCap: 30000。
+注意事項：
+- validFrom / validTo：民國年需轉換為西元年（例如 115/1/1 → 2026-01-01）
+- stores：請列出頁面上該通路下明確列舉的所有實際店家名稱，例如 7-ELEVEN、FamilyMart、唐吉訶德、東京迪士尼等；若無列舉具體店家則填空陣列 []
+- capPeriod：頁面寫「每月上限」填 "monthly"；寫「活動期間上限」填 "period"；不確定填 "monthly"
+- 一個通路若同時有多個 bonusRate（例如登錄加碼1.5%、帳單滿額加碼1%），請拆成兩個獨立的 storeRules 項目
+
+範例：
+{
+  "cardName": "吉鶴卡",
+  "baseRate": 2.5,
+  "rewardCap": null,
+  "spendCap": null,
+  "validFrom": "2026-01-01",
+  "validTo": "2026-06-30",
+  "storeRules": [
+    {
+      "categoryName": "熱門商店加碼",
+      "stores": ["7-ELEVEN", "FamilyMart", "LAWSON", "唐吉訶德", "東京迪士尼", "大阪環球影城"],
+      "bonusRate": 3.0,
+      "spendCap": 600,
+      "capPeriod": "period"
+    },
+    {
+      "categoryName": "行動支付登錄加碼",
+      "stores": [],
+      "bonusRate": 1.5,
+      "spendCap": 600,
+      "capPeriod": "monthly"
+    }
+  ]
+}
 
 網頁內容：
 ${html}`
