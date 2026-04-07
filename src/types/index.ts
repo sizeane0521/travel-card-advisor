@@ -13,6 +13,7 @@ export interface PaymentMethodBonus {
 export interface StoreBonus {
   storeName: string;
   stores: string[];           // actual store names (e.g. ["唐吉訶德", "FamilyMart"])
+  subCategories?: { label: string; stores: string[] }[]; // grouped store names (e.g. { label: "便利商店", stores: ["7-ELEVEN"] })
   rate: number;               // percentage, e.g. 5.0 = 5%
   cap: number;                // spend cap in NTD for this store bonus
   capPeriod: 'monthly' | 'period'; // 'monthly' resets each month; 'period' = entire promotion period
@@ -46,6 +47,7 @@ export interface Expense {
   foreignAmount?: { currency: string; amount: number }; // original foreign currency amount
   paymentMethod?: 'apple_pay' | 'google_pay' | 'physical';
   paymentMethodReward?: number; // NT$ from mobile pay bonus tiers (for monthly cap tracking)
+  rewardBreakdown?: { base: number; store: number; paymentMethod: number; effectiveRate: number }; // saved breakdown at time of logging
 }
 
 export interface Trip {

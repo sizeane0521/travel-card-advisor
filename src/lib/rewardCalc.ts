@@ -140,7 +140,8 @@ export function calcCardAdvice(
   tripExpenses: Expense[],
   paymentMethod?: 'apple_pay' | 'google_pay' | 'physical',
   monthStr?: string,
-  prerequisiteOverrides?: Record<number, boolean>
+  prerequisiteOverrides?: Record<number, boolean>,
+  allExpenses?: Expense[]
 ): CardAdvice {
   const month = monthStr ?? monthPrefix();
   const monthlySpend = getMonthlySpend(tripExpenses, card.id, month);
@@ -160,10 +161,16 @@ export function calcCardAdvice(
   if (!spendCapReached && storeName) {
     const bonus = findStoreBonus(card, storeName);
     if (bonus) {
-      // task 5.1: period cap uses all trip expenses; monthly cap uses current month only
+      // period cap: cross-trip accumulation within card.validFrom–validTo; monthly cap: current month only
       const storeSpend = bonus.capPeriod === 'period'
-        ? tripExpenses
-            .filter(e => e.cardId === card.id && findStoreBonus(card, e.store ?? '') === bonus)
+        ? (allExpenses ?? tripExpenses)
+            .filter(e => {
+              if (e.cardId !== card.id) return false;
+              if (findStoreBonus(card, e.store ?? '') !== bonus) return false;
+              if (card.validFrom && e.date < card.validFrom) return false;
+              if (card.validTo && e.date > card.validTo) return false;
+              return true;
+            })
             .reduce((sum, e) => sum + e.amount, 0)
         : tripExpenses
             .filter(e => e.cardId === card.id && e.store === storeName && e.date.startsWith(month))
@@ -246,9 +253,10 @@ export function calcExpenseReward(
   tripExpenses: Expense[],
   paymentMethod?: 'apple_pay' | 'google_pay' | 'physical',
   monthStr?: string,
-  prerequisiteOverrides?: Record<number, boolean>
+  prerequisiteOverrides?: Record<number, boolean>,
+  allExpenses?: Expense[]
 ): { estimatedReward: number; paymentMethodReward: number; breakdown: RewardBreakdown } {
-  const advice = calcCardAdvice(card, storeName, tripExpenses, paymentMethod, monthStr, prerequisiteOverrides);
+  const advice = calcCardAdvice(card, storeName, tripExpenses, paymentMethod, monthStr, prerequisiteOverrides, allExpenses);
   if (advice.isFull) {
     return {
       estimatedReward: 0,
@@ -313,11 +321,12 @@ export function getSortedRecommendations(
   tripExpenses: Expense[],
   paymentMethod?: 'apple_pay' | 'google_pay' | 'physical',
   monthStr?: string,
-  allPrereqOverrides?: Record<string, Record<number, boolean>>
+  allPrereqOverrides?: Record<string, Record<number, boolean>>,
+  allExpenses?: Expense[]
 ): CardAdvice[] {
   const advices = cards.map(card => calcCardAdvice(
     card, storeName, tripExpenses, paymentMethod, monthStr,
-    allPrereqOverrides?.[card.id]
+    allPrereqOverrides?.[card.id], allExpenses
   ));
   return advices.sort((a, b) => {
     if (a.isFull && !b.isFull) return 1;
@@ -336,6 +345,11 @@ export function getAllStoreNames(cards: Card[]): string[] {
     for (const bonus of card.storeBonus) {
       for (const store of (bonus.stores ?? [])) {
         names.add(store);
+      }
+      for (const sub of (bonus.subCategories ?? [])) {
+        for (const store of sub.stores) {
+          names.add(store);
+        }
       }
     }
   }

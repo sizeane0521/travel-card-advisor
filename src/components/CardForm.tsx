@@ -35,6 +35,7 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
     (card?.storeBonus ?? []).map(b => ({
       ...b,
       stores: b.stores ?? [],
+      subCategories: b.subCategories ?? [],
       capPeriod: b.capPeriod ?? 'monthly',
     }))
   )
@@ -48,6 +49,11 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
   // Store alias management: track which bonus index is expanded
   const [expandedAliasIdx, setExpandedAliasIdx] = useState<number | null>(null)
   const [newAliasInput, setNewAliasInput] = useState('')
+
+  // Sub-category management
+  const [expandedSubCatIdx, setExpandedSubCatIdx] = useState<number | null>(null)
+  const [newSubCatLabel, setNewSubCatLabel] = useState('')
+  const [newSubCatStores, setNewSubCatStores] = useState<Record<number, string>>({})
 
   // Payment method bonus state
   const existingPmb = card?.paymentMethodBonus
@@ -124,6 +130,7 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
     setBonuses(prev => [...prev, {
       storeName: newBonusStore.trim(),
       stores: [],
+      subCategories: [],
       rate: parseFloat(newBonusRate),
       cap: parseInt(newBonusCap, 10),
       capPeriod: newBonusCapPeriod,
@@ -137,6 +144,51 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
   function removeBonus(idx: number) {
     setBonuses(prev => prev.filter((_, i) => i !== idx))
     if (expandedAliasIdx === idx) setExpandedAliasIdx(null)
+    if (expandedSubCatIdx === idx) setExpandedSubCatIdx(null)
+  }
+
+  function addSubCategory(bonusIdx: number) {
+    const label = newSubCatLabel.trim()
+    if (!label) return
+    setBonuses(prev => prev.map((b, i) =>
+      i === bonusIdx
+        ? { ...b, subCategories: [...(b.subCategories ?? []), { label, stores: [] }] }
+        : b
+    ))
+    setNewSubCatLabel('')
+  }
+
+  function removeSubCategory(bonusIdx: number, subIdx: number) {
+    setBonuses(prev => prev.map((b, i) =>
+      i === bonusIdx
+        ? { ...b, subCategories: (b.subCategories ?? []).filter((_, si) => si !== subIdx) }
+        : b
+    ))
+  }
+
+  function addSubCatStore(bonusIdx: number, subIdx: number) {
+    const store = (newSubCatStores[subIdx] ?? '').trim()
+    if (!store) return
+    setBonuses(prev => prev.map((b, i) => {
+      if (i !== bonusIdx) return b
+      const subs = (b.subCategories ?? []).map((sc, si) =>
+        si === subIdx && !sc.stores.includes(store)
+          ? { ...sc, stores: [...sc.stores, store] }
+          : sc
+      )
+      return { ...b, subCategories: subs }
+    }))
+    setNewSubCatStores(prev => ({ ...prev, [subIdx]: '' }))
+  }
+
+  function removeSubCatStore(bonusIdx: number, subIdx: number, store: string) {
+    setBonuses(prev => prev.map((b, i) => {
+      if (i !== bonusIdx) return b
+      const subs = (b.subCategories ?? []).map((sc, si) =>
+        si === subIdx ? { ...sc, stores: sc.stores.filter(s => s !== store) } : sc
+      )
+      return { ...b, subCategories: subs }
+    }))
   }
 
   function addAlias(idx: number) {
@@ -170,6 +222,7 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
       setBonuses(result.storeRules.map(r => ({
         storeName: r.categoryName,
         stores: r.stores,
+        subCategories: [],
         rate: r.bonusRate,
         cap: r.spendCap,
         capPeriod: r.capPeriod,
@@ -464,12 +517,17 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
                     className="text-xs transition-colors" style={{ color: '#c8901a' }}>
                     {expandedAliasIdx === i ? '收起' : '＋店家'}
                   </button>
+                  <button type="button"
+                    onClick={() => { setExpandedSubCatIdx(expandedSubCatIdx === i ? null : i); setNewSubCatLabel('') }}
+                    className="text-xs transition-colors" style={{ color: '#7aade2' }}>
+                    {expandedSubCatIdx === i ? '收起' : '＋分類'}
+                  </button>
                   <button type="button" onClick={() => removeBonus(i)}
                     className="text-xs transition-colors" style={{ color: '#8b1a1a' }}>刪除</button>
                 </div>
               </div>
 
-              {/* task 4.2: store alias management inline */}
+              {/* Store alias management */}
               {expandedAliasIdx === i && (
                 <div className="mt-2 flex gap-2">
                   <input
@@ -484,6 +542,61 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
                     style={{ background: '#3d2e14', color: '#b89444', border: '1px solid #3a2810' }}>
                     加入
                   </button>
+                </div>
+              )}
+
+              {/* Sub-category management */}
+              {expandedSubCatIdx === i && (
+                <div className="mt-2 space-y-2">
+                  {/* Existing sub-categories */}
+                  {(b.subCategories ?? []).map((sub, si) => (
+                    <div key={si} className="rounded-lg p-2" style={{ background: '#0e0c06', border: '1px solid #3d2e14' }}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-medium" style={{ color: '#d4a017' }}>{sub.label}</span>
+                        <button type="button" onClick={() => removeSubCategory(i, si)}
+                          className="text-[10px]" style={{ color: '#8b1a1a' }}>刪除分類</button>
+                      </div>
+                      <div className="flex flex-wrap gap-1 mb-1">
+                        {sub.stores.map(s => (
+                          <span key={s} className="text-xs flex items-center gap-0.5 px-1.5 py-0.5 rounded"
+                            style={{ background: 'rgba(74,174,226,0.1)', color: '#4aade2', border: '1px solid rgba(74,174,226,0.25)' }}>
+                            {s}
+                            <button type="button" onClick={() => removeSubCatStore(i, si, s)}
+                              className="ml-0.5 opacity-60 hover:opacity-100 text-[10px]">✕</button>
+                          </span>
+                        ))}
+                      </div>
+                      <div className="flex gap-1">
+                        <input
+                          value={newSubCatStores[si] ?? ''}
+                          onChange={e => setNewSubCatStores(prev => ({ ...prev, [si]: e.target.value }))}
+                          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSubCatStore(i, si) } }}
+                          placeholder="新增店家"
+                          className="flex-1 border rounded px-2 py-0.5 text-xs focus:outline-none"
+                        />
+                        <button type="button" onClick={() => addSubCatStore(i, si)}
+                          className="text-xs px-2 py-0.5 rounded"
+                          style={{ background: '#1e2a3a', color: '#4aade2', border: '1px solid rgba(74,174,226,0.3)' }}>
+                          加入
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {/* New sub-category form */}
+                  <div className="flex gap-2">
+                    <input
+                      value={newSubCatLabel}
+                      onChange={e => setNewSubCatLabel(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSubCategory(i) } }}
+                      placeholder="分類名稱（例：便利商店）"
+                      className="flex-1 border rounded-lg px-2 py-1 text-xs focus:outline-none"
+                    />
+                    <button type="button" onClick={() => addSubCategory(i)}
+                      className="text-xs px-2 py-1 rounded transition-colors"
+                      style={{ background: '#1e2a3a', color: '#4aade2', border: '1px solid rgba(74,174,226,0.3)' }}>
+                      新增分類
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

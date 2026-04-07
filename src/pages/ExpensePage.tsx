@@ -32,10 +32,13 @@ export default function ExpensePage() {
   const [amountError, setAmountError] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<'apple_pay' | 'google_pay' | 'physical'>('apple_pay')
   const [prereqOverrides, setPrereqOverrides] = useState<Record<string, Record<number, boolean>>>({})
+  const [showCategoryBrowser, setShowCategoryBrowser] = useState(false)
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
 
   const storeNames = getAllStoreNames(data.cards)
   const expenses = activeTrip ? [...activeTrip.expenses].reverse() : []
   const tripExpenses = activeTrip?.expenses ?? []
+  const allExpenses = data.trips.flatMap(t => t.expenses)
 
   // Exchange rate derived values
   const exchangeRate = activeTrip?.exchangeRate
@@ -48,7 +51,7 @@ export default function ExpensePage() {
   // task 1.1 + 1.2: recommendations re-computed on every render (store, amount, or paymentMethod change drives it)
   // effectiveSelectedCardId: keep user selection unless it's gone or full
   const recommendations = data.cards.length > 0
-    ? getSortedRecommendations(data.cards, store || null, tripExpenses, paymentMethod, undefined, prereqOverrides)
+    ? getSortedRecommendations(data.cards, store || null, tripExpenses, paymentMethod, undefined, prereqOverrides, allExpenses)
     : []
 
   const bestCardId = recommendations.find(a => !a.isFull)?.card.id ?? ''
@@ -84,9 +87,9 @@ export default function ExpensePage() {
       ? { currency: exchangeRate.currency, amount: parsed }
       : undefined
 
-    // task 6.1: use effectiveSelectedCardId, not cardId
-    const { estimatedReward, paymentMethodReward } = calcExpenseReward(
-      selectedCard, twd, storeName, activeTrip.expenses, paymentMethod, undefined, prereqOverrides[effectiveSelectedCardId]
+    const selectedAdvice = recommendations.find(a => a.card.id === effectiveSelectedCardId)
+    const { estimatedReward, paymentMethodReward, breakdown } = calcExpenseReward(
+      selectedCard, twd, storeName, activeTrip.expenses, paymentMethod, undefined, prereqOverrides[effectiveSelectedCardId], allExpenses
     )
 
     dispatch({
@@ -101,6 +104,12 @@ export default function ExpensePage() {
         estimatedReward,
         paymentMethod,
         paymentMethodReward,
+        rewardBreakdown: {
+          base: breakdown.base,
+          store: breakdown.store,
+          paymentMethod: breakdown.paymentMethod,
+          effectiveRate: selectedAdvice?.effectiveRate ?? 0,
+        },
         ...(foreignAmount ? { foreignAmount } : {}),
       },
     })
@@ -235,8 +244,76 @@ export default function ExpensePage() {
                 {n}
               </button>
             ))}
-
           </div>
+
+          {/* Category browser — only rendered when at least one StoreBonus has subCategories */}
+          {(() => {
+            const bonusesWithSubs = data.cards.flatMap(c =>
+              c.storeBonus.filter(b => b.subCategories && b.subCategories.length > 0).map(b => ({ card: c, bonus: b }))
+            )
+            if (bonusesWithSubs.length === 0) return null
+            return (
+              <div className="mt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCategoryBrowser(v => !v)}
+                  className="text-xs underline"
+                  style={{ color: '#9a7040' }}
+                >
+                  {showCategoryBrowser ? '收起分類' : '展開分類'}
+                </button>
+                {showCategoryBrowser && (
+                  <div className="mt-2 space-y-3">
+                    {bonusesWithSubs.map(({ card, bonus }) => {
+                      const groupKey = `${card.id}:${bonus.storeName}`
+                      const isExpanded = expandedGroups.has(groupKey)
+                      return (
+                        <div key={groupKey} className="rounded-lg p-2" style={{ background: '#141008', border: '1px solid #3d2e14' }}>
+                          <button
+                            type="button"
+                            onClick={() => setExpandedGroups(prev => {
+                              const next = new Set(prev)
+                              next.has(groupKey) ? next.delete(groupKey) : next.add(groupKey)
+                              return next
+                            })}
+                            className="flex items-center gap-1 text-xs font-medium w-full text-left"
+                            style={{ color: '#d4a017' }}
+                          >
+                            <span>{bonus.storeName}</span>
+                            <span className="ml-auto" style={{ color: '#9a7040' }}>{isExpanded ? '▲' : '▶'}</span>
+                          </button>
+                          {isExpanded && (
+                            <div className="mt-2 space-y-2">
+                              {bonus.subCategories!.map(sub => (
+                                <div key={sub.label}>
+                                  <p className="text-[10px] uppercase tracking-wider mb-1" style={{ color: '#9a7040' }}>{sub.label}</p>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {sub.stores.map(s => (
+                                      <button
+                                        key={s}
+                                        type="button"
+                                        onClick={() => { setStore(s); setStoreQuery(s) }}
+                                        className="px-2.5 py-1 rounded-lg text-xs border transition-all"
+                                        style={store === s
+                                          ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a', fontWeight: 600 }
+                                          : { background: 'transparent', color: '#c8a060', borderColor: '#4a3418' }}
+                                      >
+                                        {s}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )
+          })()}
         </div>
 
         {/* Payment method selector */}
@@ -272,7 +349,7 @@ export default function ExpensePage() {
                 const isSelected = advice.card.id === effectiveSelectedCardId
                 const isTop = idx === 0 && !advice.isFull
                 const rewardInfo = twdAmount > 0 && !advice.isFull
-                  ? calcExpenseReward(advice.card, twdAmount, store || null, tripExpenses, paymentMethod, undefined, prereqOverrides[advice.card.id])
+                  ? calcExpenseReward(advice.card, twdAmount, store || null, tripExpenses, paymentMethod, undefined, prereqOverrides[advice.card.id], allExpenses)
                   : null
                 const estimated = rewardInfo?.estimatedReward ?? 0
                 const breakdown = rewardInfo?.breakdown ?? null
@@ -435,18 +512,35 @@ export default function ExpensePage() {
               <div key={e.id}
                 className="beast-card rounded-xl p-3 flex items-center justify-between"
                 style={{ background: '#1a1208', border: '1px solid #3d2e14' }}>
-                <div>
+                <div className="flex-1 min-w-0 mr-2">
                   <p className="text-xs text-[#9a7040]">{e.date} · {e.store ?? '一般消費'}</p>
                   <p className="font-medium text-[#f2e8c9]">
                     {e.foreignAmount
                       ? `¥${e.foreignAmount.amount.toLocaleString()} (NT$${e.amount.toLocaleString()})`
                       : `NT$${e.amount.toLocaleString()}`}
                   </p>
-                  <p className="text-xs text-[#c8a060]">{card?.name ?? e.cardId} · 回饋 <span style={{ color: '#4ade80' }}>NT${e.estimatedReward.toLocaleString()}</span></p>
+                  <p className="text-xs text-[#c8a060]">
+                    {card?.name ?? e.cardId}
+                    {e.rewardBreakdown && (
+                      <span className="ml-1 px-1.5 py-0.5 rounded text-[10px]"
+                        style={{ background: 'rgba(212,160,23,0.12)', color: '#d4a017', border: '1px solid rgba(212,160,23,0.2)' }}>
+                        {e.rewardBreakdown.effectiveRate}%
+                      </span>
+                    )}
+                  </p>
+                  {e.rewardBreakdown && (e.rewardBreakdown.store > 0 || e.rewardBreakdown.paymentMethod > 0) ? (
+                    <p className="text-xs mt-0.5" style={{ color: '#4ade80' }}>
+                      回饋 NT${e.estimatedReward.toLocaleString()} = 基本 NT${e.rewardBreakdown.base.toLocaleString()}
+                      {e.rewardBreakdown.store > 0 && ` + ${e.store ?? ''}加碼 NT$${e.rewardBreakdown.store.toLocaleString()}`}
+                      {e.rewardBreakdown.paymentMethod > 0 && ` + 行動支付加碼 NT$${e.rewardBreakdown.paymentMethod.toLocaleString()}`}
+                    </p>
+                  ) : (
+                    <p className="text-xs mt-0.5" style={{ color: '#4ade80' }}>回饋 NT${e.estimatedReward.toLocaleString()}</p>
+                  )}
                 </div>
                 <button
                   onClick={() => handleDelete(e.id)}
-                  className="text-xs px-3 py-1.5 rounded border transition-colors"
+                  className="text-xs px-3 py-1.5 rounded border transition-colors shrink-0"
                   style={{ color: '#c0392b', borderColor: '#3a1010' }}
                   aria-label="刪除"
                 >
@@ -457,6 +551,73 @@ export default function ExpensePage() {
           })}
         </div>
       )}
+
+      {/* ── Bonus status panel ── */}
+      {(() => {
+        const today = new Date().toISOString().slice(0, 7) // YYYY-MM
+        const bonusRows = data.cards.flatMap(card =>
+          card.storeBonus
+            .filter(b => b.cap > 0)
+            .map(b => {
+              const used = b.capPeriod === 'period'
+                ? allExpenses.filter(e => {
+                    if (e.cardId !== card.id) return false
+                    const matchedBonus = card.storeBonus.find(sb =>
+                      sb === b && (
+                        sb.stores.includes(e.store ?? '') ||
+                        (sb.subCategories ?? []).some(sc => sc.stores.includes(e.store ?? '')) ||
+                        sb.storeName === e.store
+                      )
+                    )
+                    if (!matchedBonus) return false
+                    if (card.validFrom && e.date < card.validFrom) return false
+                    if (card.validTo && e.date > card.validTo) return false
+                    return true
+                  }).reduce((sum, e) => sum + e.amount, 0)
+                : allExpenses.filter(e =>
+                    e.cardId === card.id &&
+                    e.date.startsWith(today) &&
+                    (b.stores.includes(e.store ?? '') ||
+                     (b.subCategories ?? []).some(sc => sc.stores.includes(e.store ?? '')) ||
+                     b.storeName === e.store)
+                  ).reduce((sum, e) => sum + e.amount, 0)
+              const pct = Math.min(100, Math.round(used / b.cap * 100))
+              const remaining = Math.max(0, b.cap - used)
+              return { card, bonus: b, used, remaining, pct }
+            })
+        )
+        if (bonusRows.length === 0) return null
+        return (
+          <div className="mt-4">
+            <h2 className="text-sm font-semibold text-[#d4a017] mb-2 pl-3 uppercase tracking-widest" style={{ borderLeft: '3px solid #c8901a' }}>加碼額度狀態</h2>
+            <div className="space-y-2">
+              {bonusRows.map(({ card, bonus, used, remaining, pct }) => (
+                <div key={`${card.id}:${bonus.storeName}`}
+                  className="beast-card rounded-xl p-3"
+                  style={{ background: '#1a1208', border: '1px solid #3d2e14' }}>
+                  <div className="flex items-center justify-between mb-1">
+                    <div>
+                      <span className="text-xs font-medium text-[#f2e8c9]">{card.name}</span>
+                      <span className="text-xs text-[#9a7040] ml-1">· {bonus.storeName}加碼</span>
+                    </div>
+                    <span className="text-xs" style={{ color: remaining === 0 ? '#c0392b' : '#c8a060' }}>
+                      NT${used.toLocaleString()} / NT${bonus.cap.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="rounded-full overflow-hidden h-1.5" style={{ background: '#2e2210' }}>
+                    <div className="h-full rounded-full transition-all"
+                      style={{ width: `${pct}%`, background: pct >= 100 ? '#c0392b' : 'linear-gradient(90deg, #c8901a, #d4a017)' }} />
+                  </div>
+                  <p className="text-[10px] mt-1" style={{ color: '#9a7040' }}>
+                    {bonus.capPeriod === 'period' ? '活動期間' : '本月'}剩餘 NT${remaining.toLocaleString()}
+                    {remaining === 0 && ' · 已達上限'}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }
