@@ -14,6 +14,11 @@ export interface CardImportResult {
     spendCap: number
     capPeriod: 'monthly' | 'period'
   }[]
+  paymentMethodBonusTiers?: {
+    rate: number
+    monthlyCap: number
+    prerequisite?: string
+  }[]
 }
 
 // ── Fetch page HTML via CORS proxy ─────────────────────────────────────────
@@ -83,6 +88,19 @@ export function parseClaudeResponse(raw: string): CardImportResult | null {
       }
     }
 
+    const paymentMethodBonusTiers: CardImportResult['paymentMethodBonusTiers'] = []
+    if (Array.isArray(parsed.paymentMethodBonusTiers)) {
+      for (const tier of parsed.paymentMethodBonusTiers) {
+        if (!tier || typeof tier !== 'object') continue
+        if (typeof tier.rate !== 'number' || typeof tier.monthlyCap !== 'number') continue
+        paymentMethodBonusTiers.push({
+          rate: tier.rate,
+          monthlyCap: tier.monthlyCap,
+          prerequisite: typeof tier.prerequisite === 'string' ? tier.prerequisite : undefined,
+        })
+      }
+    }
+
     return {
       cardName: typeof parsed.cardName === 'string' ? parsed.cardName : null,
       baseRate: typeof parsed.baseRate === 'number' ? parsed.baseRate : null,
@@ -91,6 +109,7 @@ export function parseClaudeResponse(raw: string): CardImportResult | null {
       validFrom: typeof parsed.validFrom === 'string' ? parsed.validFrom : null,
       validTo: typeof parsed.validTo === 'string' ? parsed.validTo : null,
       storeRules,
+      paymentMethodBonusTiers,
     }
   } catch {
     return null
@@ -168,11 +187,18 @@ export async function parseCardFromHtml(
   "validTo": "活動結束日期（YYYY-MM-DD 格式）或 null",
   "storeRules": [
     {
-      "categoryName": "銀行定義的加碼通路名稱（例如：熱門商店、行動支付加碼）",
+      "categoryName": "銀行定義的加碼通路名稱（例如：熱門商店加碼、超市加碼）",
       "stores": ["實際店家名稱1", "實際店家名稱2"],
       "bonusRate": 加碼回饋率（數字，例如 3.0 代表 3%）,
       "spendCap": 此通路的消費上限（整數，新台幣，找不到填 0）,
       "capPeriod": "monthly 或 period（monthly=每月重置；period=整個活動期間只算一次）"
+    }
+  ],
+  "paymentMethodBonusTiers": [
+    {
+      "rate": 行動支付加碼回饋率（數字，例如 1.5 代表 1.5%）,
+      "monthlyCap": 此 tier 的每月回饋金上限（整數，新台幣），
+      "prerequisite": "加碼條件說明（例如：前月帳單滿30000元）或 null"
     }
   ]
 }
@@ -181,7 +207,9 @@ export async function parseCardFromHtml(
 - validFrom / validTo：民國年需轉換為西元年（例如 115/1/1 → 2026-01-01）
 - stores：請列出頁面上該通路下明確列舉的所有實際店家名稱，例如 7-ELEVEN、FamilyMart、唐吉訶德、東京迪士尼等；若無列舉具體店家則填空陣列 []
 - capPeriod：頁面寫「每月上限」填 "monthly"；寫「活動期間上限」填 "period"；不確定填 "monthly"
-- 一個通路若同時有多個 bonusRate（例如登錄加碼1.5%、帳單滿額加碼1%），請拆成兩個獨立的 storeRules 項目
+- 一個通路若同時有多個 bonusRate（例如登錄加碼1.5%、帳單滿額加碼1%），請拆成兩個獨立項目
+- 【重要】凡是與行動支付相關的加碼（包含：Apple Pay、Google Pay、行動支付、感應支付、行動支付加碼、行動支付登錄加碼、行動支付帳單滿額加碼等），一律放入 paymentMethodBonusTiers，不得放入 storeRules；每個 tier 各為一個獨立物件
+- paymentMethodBonusTiers 中的 prerequisite：若無條件填 null；若有條件（如前月帳單滿額）請填寫說明文字
 
 範例：
 {
@@ -198,13 +226,18 @@ export async function parseCardFromHtml(
       "bonusRate": 3.0,
       "spendCap": 600,
       "capPeriod": "period"
+    }
+  ],
+  "paymentMethodBonusTiers": [
+    {
+      "rate": 1.5,
+      "monthlyCap": 600,
+      "prerequisite": null
     },
     {
-      "categoryName": "行動支付登錄加碼",
-      "stores": [],
-      "bonusRate": 1.5,
-      "spendCap": 600,
-      "capPeriod": "monthly"
+      "rate": 1.0,
+      "monthlyCap": 200,
+      "prerequisite": "前月帳單滿30000元"
     }
   ]
 }

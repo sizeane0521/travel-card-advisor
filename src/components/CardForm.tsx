@@ -175,6 +175,16 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
         capPeriod: r.capPeriod,
       })))
     }
+    if (result.paymentMethodBonusTiers && result.paymentMethodBonusTiers.length > 0) {
+      setPmBonusEnabled(true)
+      setPmMethods(['apple_pay', 'google_pay'])
+      setPmTiers(result.paymentMethodBonusTiers.map(t => ({
+        rate: t.rate,
+        monthlyCap: t.monthlyCap,
+        prerequisite: t.prerequisite ?? undefined,
+        prerequisiteMet: false,
+      })))
+    }
     setMissingFields(missing)
     setShowImportPanel(false)
     setShowHtmlFallback(false)
