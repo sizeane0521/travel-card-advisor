@@ -1,21 +1,12 @@
 import { useState } from 'react'
-import AdvisorPage from './pages/AdvisorPage'
 import ExpensePage from './pages/ExpensePage'
 import SettingsPage from './pages/SettingsPage'
 import TripsPage from './pages/TripsPage'
 import { ApiProviderContext, type ApiProvider } from './lib/apiProviderContext'
 
-type Tab = 'advisor' | 'expense' | 'trips' | 'settings'
+type Tab = 'expense' | 'trips' | 'settings'
 
 // ── SVG Icons ────────────────────────────────────────────
-const GemIcon = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M6 3h12l4 6-10 13L2 9l4-6z"/>
-    <path d="M11 3L8 9l4 13 4-13-3-6"/>
-    <line x1="2" y1="9" x2="22" y2="9"/>
-  </svg>
-)
-
 const ScrollIcon = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -41,14 +32,13 @@ const ShieldIcon = () => (
 
 // ── Tab Config ───────────────────────────────────────────
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
-  { id: 'advisor',  label: '推薦', icon: <GemIcon /> },
   { id: 'expense',  label: '記帳', icon: <ScrollIcon /> },
   { id: 'trips',    label: '旅程', icon: <GlobeIcon /> },
   { id: 'settings', label: '設定', icon: <ShieldIcon /> },
 ]
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>('advisor')
+  const [tab, setTab] = useState<Tab>('expense')
   const [provider, setProvider] = useState<ApiProvider>('gemini')
   const [apiKey, setApiKey] = useState('')
 
@@ -56,7 +46,6 @@ export default function App() {
     <ApiProviderContext.Provider value={{ provider, apiKey, setProvider, setApiKey }}>
       <div className="flex flex-col min-h-dvh bg-transparent">
         <main className="flex-1 overflow-y-auto pb-20">
-          {tab === 'advisor'  && <AdvisorPage />}
           {tab === 'expense'  && <ExpensePage />}
           {tab === 'trips'    && <TripsPage />}
           {tab === 'settings' && <SettingsPage />}
