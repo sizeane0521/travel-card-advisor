@@ -16,10 +16,11 @@ function estimateReward(
   advice: CardAdvice,
   twdAmount: number,
   paymentMethod: 'apple_pay' | 'google_pay' | 'physical',
-  tripExpenses: import('../types').Expense[]
+  tripExpenses: import('../types').Expense[],
+  prerequisiteOverrides?: Record<number, boolean>
 ): number {
   if (advice.isFull || twdAmount <= 0) return 0
-  const pmBonus = calcPaymentMethodBonus(advice.card, paymentMethod, twdAmount, tripExpenses)
+  const pmBonus = calcPaymentMethodBonus(advice.card, paymentMethod, twdAmount, tripExpenses, undefined, prerequisiteOverrides)
   const baseRate = advice.effectiveRate - pmBonus.bonusRate
   const baseReward = Math.floor(twdAmount * baseRate / 100)
   const cappedBase = advice.card.monthlyCap.rewardLimit !== undefined
@@ -41,7 +42,8 @@ export default function ExpensePage() {
   const [showAllStores, setShowAllStores] = useState(false)
   const [storeQuery, setStoreQuery] = useState('')
   const [amountError, setAmountError] = useState('')
-  const [paymentMethod, setPaymentMethod] = useState<'apple_pay' | 'google_pay' | 'physical'>('physical')
+  const [paymentMethod, setPaymentMethod] = useState<'apple_pay' | 'google_pay' | 'physical'>('apple_pay')
+  const [prereqOverrides, setPrereqOverrides] = useState<Record<string, Record<number, boolean>>>({})
 
   const storeNames = getAllStoreNames(data.cards)
   const expenses = activeTrip ? [...activeTrip.expenses].reverse() : []
@@ -58,7 +60,7 @@ export default function ExpensePage() {
   // task 1.1 + 1.2: recommendations re-computed on every render (store, amount, or paymentMethod change drives it)
   // effectiveSelectedCardId: keep user selection unless it's gone or full
   const recommendations = data.cards.length > 0
-    ? getSortedRecommendations(data.cards, store || null, tripExpenses, paymentMethod)
+    ? getSortedRecommendations(data.cards, store || null, tripExpenses, paymentMethod, undefined, prereqOverrides)
     : []
 
   const bestCardId = recommendations.find(a => !a.isFull)?.card.id ?? ''
@@ -98,7 +100,7 @@ export default function ExpensePage() {
 
     // task 6.1: use effectiveSelectedCardId, not cardId
     const { estimatedReward, paymentMethodReward } = calcExpenseReward(
-      selectedCard, twd, storeName, activeTrip.expenses, paymentMethod
+      selectedCard, twd, storeName, activeTrip.expenses, paymentMethod, undefined, prereqOverrides[effectiveSelectedCardId]
     )
 
     dispatch({
@@ -121,6 +123,7 @@ export default function ExpensePage() {
     setAmount('')
     setStore('')
     setStoreQuery('')
+    setPrereqOverrides({})
   }
 
   function handleDelete(expenseId: string) {
@@ -266,9 +269,9 @@ export default function ExpensePage() {
           <label className="text-xs text-[#c8a060] block mb-2 uppercase tracking-wider">付款方式</label>
           <div className="flex gap-2">
             {([
-              { value: 'physical', label: '實體卡' },
               { value: 'apple_pay', label: 'Apple Pay' },
               { value: 'google_pay', label: 'Google Pay' },
+              { value: 'physical', label: '實體卡' },
             ] as const).map(({ value, label }) => (
               <button
                 key={value}
@@ -293,7 +296,7 @@ export default function ExpensePage() {
               {recommendations.map((advice, idx) => {
                 const isSelected = advice.card.id === effectiveSelectedCardId
                 const isTop = idx === 0 && !advice.isFull
-                const estimated = estimateReward(advice, twdAmount, paymentMethod, tripExpenses)
+                const estimated = estimateReward(advice, twdAmount, paymentMethod, tripExpenses, prereqOverrides[advice.card.id])
 
                 // task 2.2: progress bar data
                 const cap = advice.card.monthlyCap.rewardLimit ?? advice.card.monthlyCap.spendLimit
@@ -319,14 +322,16 @@ export default function ExpensePage() {
                       opacity: advice.isFull ? 0.45 : 1,
                     }}
                   >
+                    {isTop && (
+                      <div className="mb-1">
+                        <span className="text-xs px-2 py-1 rounded-lg font-bold tracking-wide"
+                          style={{ background: 'linear-gradient(90deg, #ffcc00, #ffea00)', color: '#1a1208', border: '1px solid #ffcc00' }}>
+                          🌟 最佳推薦
+                        </span>
+                      </div>
+                    )}
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-2 flex-wrap">
-                        {isTop && (
-                          <span className="text-xs px-2 py-1 rounded-lg font-bold tracking-wide"
-                            style={{ background: 'linear-gradient(90deg, #ffcc00, #ffea00)', color: '#1a1208', border: '1px solid #ffcc00' }}>
-                            🌟 最佳推薦
-                          </span>
-                        )}
                         <span className="text-sm font-medium text-[#f2e8c9]">{advice.card.name}</span>
                         {advice.paymentMethodBadge && (
                           <span className="text-xs px-2 py-0.5 rounded font-medium"
@@ -371,6 +376,34 @@ export default function ExpensePage() {
                     )}
 
                     {/* task 2.3: no-cap card shows only rate (handled above — no bar rendered) */}
+
+                    {/* Prerequisite tier toggles: shown when mobile payment selected and card has conditional tiers */}
+                    {paymentMethod !== 'physical' &&
+                      advice.card.paymentMethodBonus?.methods.includes(paymentMethod) &&
+                      advice.card.paymentMethodBonus.tiers.some(t => t.prerequisite) && (
+                      <div className="mt-2 flex flex-wrap gap-1.5" onClick={e => e.stopPropagation()}>
+                        {advice.card.paymentMethodBonus.tiers.map((tier, tierIdx) => {
+                          if (!tier.prerequisite) return null
+                          const isEnabled = prereqOverrides[advice.card.id]?.[tierIdx] === true
+                          return (
+                            <button
+                              key={tierIdx}
+                              type="button"
+                              onClick={() => setPrereqOverrides(prev => ({
+                                ...prev,
+                                [advice.card.id]: { ...(prev[advice.card.id] ?? {}), [tierIdx]: !isEnabled },
+                              }))}
+                              className="text-xs px-2 py-1 rounded-lg border transition-all"
+                              style={isEnabled
+                                ? { background: 'rgba(74,174,226,0.2)', color: '#4aade2', borderColor: '#4aade2' }
+                                : { background: 'transparent', color: '#9a7040', borderColor: '#3d2e14' }}
+                            >
+                              {isEnabled ? '✓' : '+'} {tier.prerequisite} (+{tier.rate}%)
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
                   </div>
                 )
               })}

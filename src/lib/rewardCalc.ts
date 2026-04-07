@@ -56,7 +56,8 @@ export function calcPaymentMethodBonus(
   paymentMethod: 'apple_pay' | 'google_pay' | 'physical',
   amount: number,
   tripExpenses: Expense[],
-  monthStr?: string
+  monthStr?: string,
+  prerequisiteOverrides?: Record<number, boolean>
 ): PaymentMethodBonusResult {
   if (!card.paymentMethodBonus || paymentMethod === 'physical') {
     return { bonusRate: 0, bonusReward: 0 };
@@ -77,9 +78,12 @@ export function calcPaymentMethodBonus(
   let totalBonusRate = 0;
   let totalBonusReward = 0;
 
-  for (const tier of card.paymentMethodBonus.tiers) {
-    // Skip tiers with unmet prerequisites
-    if (tier.prerequisite !== undefined && tier.prerequisiteMet !== true) continue;
+  for (const [tierIdx, tier] of card.paymentMethodBonus.tiers.entries()) {
+    // Skip tiers with unmet prerequisites; per-expense override takes precedence over card setting
+    const prereqMet = prerequisiteOverrides !== undefined && tierIdx in prerequisiteOverrides
+      ? prerequisiteOverrides[tierIdx]
+      : tier.prerequisiteMet;
+    if (tier.prerequisite !== undefined && prereqMet !== true) continue;
 
     const tierUsed = Math.min(remainingAccrued, tier.monthlyCap);
     remainingAccrued = Math.max(0, remainingAccrued - tierUsed);
@@ -101,7 +105,8 @@ export function calcCardAdvice(
   storeName: string | null,
   tripExpenses: Expense[],
   paymentMethod?: 'apple_pay' | 'google_pay' | 'physical',
-  monthStr?: string
+  monthStr?: string,
+  prerequisiteOverrides?: Record<number, boolean>
 ): CardAdvice {
   const month = monthStr ?? monthPrefix();
   const monthlySpend = getMonthlySpend(tripExpenses, card.id, month);
@@ -148,7 +153,7 @@ export function calcCardAdvice(
 
   // Payment method bonus
   const pm = paymentMethod ?? 'physical';
-  const pmBonus = calcPaymentMethodBonus(card, pm, 0, tripExpenses, month);
+  const pmBonus = calcPaymentMethodBonus(card, pm, 0, tripExpenses, month, prerequisiteOverrides);
 
   const paymentMethodBadge: CardAdvice['paymentMethodBadge'] =
     pmBonus.bonusRate > 0 && (pm === 'apple_pay' || pm === 'google_pay') ? pm : undefined;
@@ -169,13 +174,14 @@ export function calcExpenseReward(
   storeName: string | null,
   tripExpenses: Expense[],
   paymentMethod?: 'apple_pay' | 'google_pay' | 'physical',
-  monthStr?: string
+  monthStr?: string,
+  prerequisiteOverrides?: Record<number, boolean>
 ): { estimatedReward: number; paymentMethodReward: number } {
-  const advice = calcCardAdvice(card, storeName, tripExpenses, paymentMethod, monthStr);
+  const advice = calcCardAdvice(card, storeName, tripExpenses, paymentMethod, monthStr, prerequisiteOverrides);
   if (advice.isFull) return { estimatedReward: 0, paymentMethodReward: 0 };
 
   const pm = paymentMethod ?? 'physical';
-  const pmBonus = calcPaymentMethodBonus(card, pm, amount, tripExpenses, monthStr);
+  const pmBonus = calcPaymentMethodBonus(card, pm, amount, tripExpenses, monthStr, prerequisiteOverrides);
 
   const baseAndStoreReward = Math.floor((amount * (advice.effectiveRate - pmBonus.bonusRate)) / 100);
   let cappedBaseReward = baseAndStoreReward;
@@ -194,9 +200,13 @@ export function getSortedRecommendations(
   storeName: string | null,
   tripExpenses: Expense[],
   paymentMethod?: 'apple_pay' | 'google_pay' | 'physical',
-  monthStr?: string
+  monthStr?: string,
+  allPrereqOverrides?: Record<string, Record<number, boolean>>
 ): CardAdvice[] {
-  const advices = cards.map(card => calcCardAdvice(card, storeName, tripExpenses, paymentMethod, monthStr));
+  const advices = cards.map(card => calcCardAdvice(
+    card, storeName, tripExpenses, paymentMethod, monthStr,
+    allPrereqOverrides?.[card.id]
+  ));
   return advices.sort((a, b) => {
     if (a.isFull && !b.isFull) return 1;
     if (!a.isFull && b.isFull) return -1;
