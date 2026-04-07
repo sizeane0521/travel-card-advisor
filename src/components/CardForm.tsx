@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Card, StoreBonus } from '../types'
+import type { Card, StoreBonus, PaymentMethodBonus, PaymentMethodBonusTier } from '../types'
 import { importCardFromUrl, importCardFromHtml } from '../lib/cardImport'
 import type { CardImportResult } from '../lib/cardImport'
 import { useApiProvider } from '../lib/apiProviderContext'
@@ -49,6 +49,21 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
   const [expandedAliasIdx, setExpandedAliasIdx] = useState<number | null>(null)
   const [newAliasInput, setNewAliasInput] = useState('')
 
+  // Payment method bonus state
+  const existingPmb = card?.paymentMethodBonus
+  const [pmBonusEnabled, setPmBonusEnabled] = useState(!!existingPmb)
+  const [pmMethods, setPmMethods] = useState<('apple_pay' | 'google_pay')[]>(
+    existingPmb?.methods ?? ['apple_pay', 'google_pay']
+  )
+  const [pmTiers, setPmTiers] = useState<PaymentMethodBonusTier[]>(
+    existingPmb?.tiers ?? []
+  )
+  // New tier form state
+  const [newTierRate, setNewTierRate] = useState('')
+  const [newTierCap, setNewTierCap] = useState('')
+  const [newTierPrereq, setNewTierPrereq] = useState('')
+  const [newTierPrereqMet, setNewTierPrereqMet] = useState(false)
+
   // Import panel state
   const [showImportPanel, setShowImportPanel] = useState(false)
   const [importUrl, setImportUrl] = useState('')
@@ -57,6 +72,44 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
   const [importing, setImporting] = useState(false)
   const [importError, setImportError] = useState<string | null>(null)
   const [missingFields, setMissingFields] = useState<string[]>([])
+
+  function togglePmMethod(method: 'apple_pay' | 'google_pay') {
+    setPmMethods(prev =>
+      prev.includes(method) ? prev.filter(m => m !== method) : [...prev, method]
+    )
+  }
+
+  function addPmTier() {
+    if (!newTierRate || !newTierCap) return
+    const tier: PaymentMethodBonusTier = {
+      rate: parseFloat(newTierRate),
+      monthlyCap: parseInt(newTierCap, 10),
+    }
+    if (newTierPrereq.trim()) {
+      tier.prerequisite = newTierPrereq.trim()
+      tier.prerequisiteMet = newTierPrereqMet
+    }
+    setPmTiers(prev => [...prev, tier])
+    setNewTierRate('')
+    setNewTierCap('')
+    setNewTierPrereq('')
+    setNewTierPrereqMet(false)
+  }
+
+  function removePmTier(idx: number) {
+    setPmTiers(prev => prev.filter((_, i) => i !== idx))
+  }
+
+  function toggleTierPrereqMet(idx: number) {
+    setPmTiers(prev => prev.map((t, i) =>
+      i === idx ? { ...t, prerequisiteMet: !t.prerequisiteMet } : t
+    ))
+  }
+
+  function buildPaymentMethodBonus(): PaymentMethodBonus | undefined {
+    if (!pmBonusEnabled || pmTiers.length === 0 || pmMethods.length === 0) return undefined
+    return { methods: pmMethods, tiers: pmTiers }
+  }
 
   function handleNameChange(v: string) {
     setName(v)
@@ -188,6 +241,7 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
       baseRate: parseFloat(baseRate),
       monthlyCap,
       storeBonus: bonuses,
+      paymentMethodBonus: buildPaymentMethodBonus(),
       validFrom: validFrom || undefined,
       validTo: validTo || undefined,
     })
@@ -466,6 +520,136 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
               </button>
             </div>
           </div>
+        </div>
+
+        {/* ── Payment method bonus ── */}
+        <div className="beast-card rounded-xl p-4" style={panelStyle}>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-[#d4a017] pl-3 uppercase tracking-widest"
+              style={{ borderLeft: '3px solid #c8901a' }}>行動支付加碼</h3>
+            <button
+              type="button"
+              onClick={() => setPmBonusEnabled(v => !v)}
+              className="text-xs px-3 py-1 rounded-lg border transition-all"
+              style={pmBonusEnabled
+                ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a', fontWeight: 600 }
+                : { background: 'transparent', color: '#c8a060', borderColor: '#4a3418' }}
+            >
+              {pmBonusEnabled ? '啟用中' : '未啟用'}
+            </button>
+          </div>
+
+          {pmBonusEnabled && (
+            <div className="space-y-4">
+              {/* Supported payment methods */}
+              <div>
+                <p className="text-xs text-[#c8a060] mb-2 uppercase tracking-wider">適用付款方式</p>
+                <div className="flex gap-2">
+                  {(['apple_pay', 'google_pay'] as const).map(m => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => togglePmMethod(m)}
+                      className="flex-1 py-1.5 rounded text-xs border transition-all"
+                      style={pmMethods.includes(m)
+                        ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a' }
+                        : { background: 'transparent', color: '#c8a060', borderColor: '#3a2810' }}
+                    >
+                      {m === 'apple_pay' ? 'Apple Pay' : 'Google Pay'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Existing tiers */}
+              {pmTiers.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs text-[#c8a060] uppercase tracking-wider">加碼層級</p>
+                  {pmTiers.map((tier, idx) => (
+                    <div key={idx} className="rounded-lg p-3 space-y-2"
+                      style={{ background: '#141008', border: '1px solid #3d2e14' }}>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-[#f2e8c9]">
+                          +{tier.rate}%・月上限 NT${tier.monthlyCap.toLocaleString()}
+                        </span>
+                        <button type="button" onClick={() => removePmTier(idx)}
+                          className="text-xs" style={{ color: '#8b1a1a' }}>刪除</button>
+                      </div>
+                      {tier.prerequisite && (
+                        <div className="space-y-1">
+                          <p className="text-xs" style={{ color: '#9a7040' }}>條件：{tier.prerequisite}</p>
+                          <label className="flex items-start gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={tier.prerequisiteMet ?? false}
+                              onChange={() => toggleTierPrereqMet(idx)}
+                              className="mt-0.5"
+                            />
+                            <span>
+                              <span className="text-xs text-[#c8a060]">我目前符合此條件</span>
+                              <span className="block text-xs mt-0.5" style={{ color: '#9a5020' }}>
+                                每月初請確認條件是否仍符合
+                              </span>
+                            </span>
+                          </label>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* New tier form */}
+              <div className="space-y-2">
+                <p className="text-xs text-[#c8a060] uppercase tracking-wider">新增加碼層級</p>
+                <div className="flex gap-2">
+                  <input
+                    value={newTierRate}
+                    onChange={e => setNewTierRate(e.target.value)}
+                    type="number" step="0.1" min="0" placeholder="加碼 %"
+                    className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none"
+                  />
+                  <input
+                    value={newTierCap}
+                    onChange={e => setNewTierCap(e.target.value)}
+                    type="number" min="0" placeholder="月上限 NT$"
+                    className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none"
+                  />
+                </div>
+                <input
+                  value={newTierPrereq}
+                  onChange={e => setNewTierPrereq(e.target.value)}
+                  placeholder="前置條件（選填，例：前月帳單達3萬元）"
+                  className={inputClass + ' text-sm'}
+                />
+                {newTierPrereq.trim() && (
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={newTierPrereqMet}
+                      onChange={e => setNewTierPrereqMet(e.target.checked)}
+                      className="mt-0.5"
+                    />
+                    <span>
+                      <span className="text-xs text-[#c8a060]">我目前符合此條件</span>
+                      <span className="block text-xs mt-0.5" style={{ color: '#9a5020' }}>
+                        每月初請確認條件是否仍符合
+                      </span>
+                    </span>
+                  </label>
+                )}
+                <button
+                  type="button"
+                  onClick={addPmTier}
+                  disabled={!newTierRate || !newTierCap}
+                  className="w-full text-sm py-1.5 rounded border transition-all disabled:opacity-30"
+                  style={{ background: '#3d2e14', color: '#b89444', border: '1px solid #3a2810' }}
+                >
+                  ＋ 新增層級
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex gap-2 pb-4">

@@ -1,3 +1,15 @@
+export interface PaymentMethodBonusTier {
+  rate: number;            // additional reward % (e.g. 1.5 = 1.5%)
+  monthlyCap: number;      // max NT$ reward this tier can contribute per month
+  prerequisite?: string;   // human-readable condition (e.g. "前月帳單達3萬元")
+  prerequisiteMet?: boolean; // user-declared; when false/absent, tier is skipped
+}
+
+export interface PaymentMethodBonus {
+  methods: ('apple_pay' | 'google_pay')[];
+  tiers: PaymentMethodBonusTier[];
+}
+
 export interface StoreBonus {
   storeName: string;
   stores: string[];           // actual store names (e.g. ["唐吉訶德", "FamilyMart"])
@@ -18,6 +30,7 @@ export interface Card {
   baseRate: number;        // percentage, e.g. 3.0 = 3%
   monthlyCap: MonthlyCap;
   storeBonus: StoreBonus[];
+  paymentMethodBonus?: PaymentMethodBonus;
   validFrom?: string;      // promotion start date YYYY-MM-DD
   validTo?: string;        // promotion end date YYYY-MM-DD
 }
@@ -30,6 +43,8 @@ export interface Expense {
   date: string;            // ISO date string YYYY-MM-DD
   estimatedReward: number; // NTD reward estimated at time of logging
   foreignAmount?: { currency: string; amount: number }; // original foreign currency amount
+  paymentMethod?: 'apple_pay' | 'google_pay' | 'physical';
+  paymentMethodReward?: number; // NT$ from mobile pay bonus tiers (for monthly cap tracking)
 }
 
 export interface Trip {

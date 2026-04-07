@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useStore } from '../store/useStore'
-import { getAllStoreNames, getSortedRecommendations, calcExpenseReward } from '../lib/rewardCalc'
+import { getAllStoreNames, getSortedRecommendations, calcExpenseReward, calcPaymentMethodBonus } from '../lib/rewardCalc'
 import type { CardAdvice } from '../lib/rewardCalc'
 
 function todayStr(): string {
@@ -12,13 +12,20 @@ function genId(): string {
 }
 
 // Estimate reward for a card from its advice + current twd amount
-function estimateReward(advice: CardAdvice, twdAmount: number): number {
+function estimateReward(
+  advice: CardAdvice,
+  twdAmount: number,
+  paymentMethod: 'apple_pay' | 'google_pay' | 'physical',
+  tripExpenses: import('../types').Expense[]
+): number {
   if (advice.isFull || twdAmount <= 0) return 0
-  const raw = Math.floor(twdAmount * advice.effectiveRate / 100)
-  if (advice.card.monthlyCap.rewardLimit !== undefined) {
-    return Math.min(raw, advice.remainingAmount)
-  }
-  return raw
+  const pmBonus = calcPaymentMethodBonus(advice.card, paymentMethod, twdAmount, tripExpenses)
+  const baseRate = advice.effectiveRate - pmBonus.bonusRate
+  const baseReward = Math.floor(twdAmount * baseRate / 100)
+  const cappedBase = advice.card.monthlyCap.rewardLimit !== undefined
+    ? Math.min(baseReward, advice.remainingAmount)
+    : baseReward
+  return cappedBase + pmBonus.bonusReward
 }
 
 const STORE_CHIP_LIMIT = 5
@@ -33,6 +40,7 @@ export default function ExpensePage() {
   const [selectedCardId, setSelectedCardId] = useState<string>('')
   const [showAllStores, setShowAllStores] = useState(false)
   const [amountError, setAmountError] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState<'apple_pay' | 'google_pay' | 'physical'>('physical')
 
   const storeNames = getAllStoreNames(data.cards)
   const expenses = activeTrip ? [...activeTrip.expenses].reverse() : []
@@ -46,10 +54,10 @@ export default function ExpensePage() {
     ? (exchangeRate ? Math.floor(parsedAmount * exchangeRate.rate) : parsedAmount)
     : 0
 
-  // task 1.1 + 1.2: recommendations re-computed on every render (store or amount change drives it)
+  // task 1.1 + 1.2: recommendations re-computed on every render (store, amount, or paymentMethod change drives it)
   // effectiveSelectedCardId: keep user selection unless it's gone or full
   const recommendations = data.cards.length > 0
-    ? getSortedRecommendations(data.cards, store || null, tripExpenses)
+    ? getSortedRecommendations(data.cards, store || null, tripExpenses, paymentMethod)
     : []
 
   const bestCardId = recommendations.find(a => !a.isFull)?.card.id ?? ''
@@ -85,7 +93,9 @@ export default function ExpensePage() {
       : undefined
 
     // task 6.1: use effectiveSelectedCardId, not cardId
-    const reward = calcExpenseReward(selectedCard, twd, storeName, activeTrip.expenses)
+    const { estimatedReward, paymentMethodReward } = calcExpenseReward(
+      selectedCard, twd, storeName, activeTrip.expenses, paymentMethod
+    )
 
     dispatch({
       type: 'ADD_EXPENSE',
@@ -96,7 +106,9 @@ export default function ExpensePage() {
         cardId: effectiveSelectedCardId,
         store: storeName,
         date: todayStr(),
-        estimatedReward: reward,
+        estimatedReward,
+        paymentMethod,
+        paymentMethodReward,
         ...(foreignAmount ? { foreignAmount } : {}),
       },
     })
@@ -216,6 +228,30 @@ export default function ExpensePage() {
           </div>
         </div>
 
+        {/* Payment method selector */}
+        <div>
+          <label className="text-xs text-[#c8a060] block mb-2 uppercase tracking-wider">付款方式</label>
+          <div className="flex gap-2">
+            {([
+              { value: 'physical', label: '實體卡' },
+              { value: 'apple_pay', label: 'Apple Pay' },
+              { value: 'google_pay', label: 'Google Pay' },
+            ] as const).map(({ value, label }) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setPaymentMethod(value)}
+                className="flex-1 py-1.5 rounded-lg text-xs border transition-all"
+                style={paymentMethod === value
+                  ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a', fontWeight: 600 }
+                  : { background: 'transparent', color: '#c8a060', borderColor: '#4a3418' }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* task 2.1–2.4: inline card recommendation list */}
         {data.cards.length > 0 && (
           <div>
@@ -224,7 +260,7 @@ export default function ExpensePage() {
               {recommendations.map((advice, idx) => {
                 const isSelected = advice.card.id === effectiveSelectedCardId
                 const isTop = idx === 0 && !advice.isFull
-                const estimated = estimateReward(advice, twdAmount)
+                const estimated = estimateReward(advice, twdAmount, paymentMethod, tripExpenses)
 
                 // task 2.2: progress bar data
                 const cap = advice.card.monthlyCap.rewardLimit ?? advice.card.monthlyCap.spendLimit
@@ -240,23 +276,31 @@ export default function ExpensePage() {
                     className="rounded-xl p-3 transition-all"
                     style={{
                       cursor: advice.isFull ? 'default' : 'pointer',
-                      background: isSelected ? '#1e1608' : '#141008',
-                      border: isSelected
-                        ? '1px solid #c8901a'
-                        : '1px solid #3d2e14',
-                      boxShadow: isSelected ? '0 0 10px rgba(200,144,26,0.12)' : 'none',
+                      background: isTop && isSelected ? '#2a1f0a' : isSelected ? '#1e1608' : '#141008',
+                      border: isTop && isSelected
+                        ? '2px solid #ffcc00' // 更顯眼的主推薦卡片邊框
+                        : isSelected
+                          ? '1px solid #c8901a'
+                          : '1px solid #3d2e14',
+                      boxShadow: isSelected ? '0 0 12px rgba(255,204,0,0.25)' : 'none', // 更顯眼的光暈
                       opacity: advice.isFull ? 0.45 : 1,
                     }}
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-2 flex-wrap">
                         {isTop && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold"
-                            style={{ background: 'rgba(212,160,23,0.18)', color: '#d4a017', border: '1px solid rgba(212,160,23,0.3)' }}>
-                            ◆ 推薦
+                          <span className="text-xs px-2 py-1 rounded-lg font-bold tracking-wide"
+                            style={{ background: 'linear-gradient(90deg, #ffcc00, #ffea00)', color: '#1a1208', border: '1px solid #ffcc00' }}>
+                            🌟 最佳推薦
                           </span>
                         )}
                         <span className="text-sm font-medium text-[#f2e8c9]">{advice.card.name}</span>
+                        {advice.paymentMethodBadge && (
+                          <span className="text-xs px-2 py-0.5 rounded font-medium"
+                            style={{ background: 'rgba(74,174,226,0.15)', color: '#4aade2', border: '1px solid rgba(74,174,226,0.3)' }}>
+                            {advice.paymentMethodBadge === 'apple_pay' ? 'Apple Pay' : 'Google Pay'}
+                          </span>
+                        )}
                         {advice.isFull && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded"
                             style={{ background: 'rgba(139,26,26,0.3)', color: '#c0392b', border: '1px solid #5a1a1a' }}>

@@ -145,19 +145,86 @@ code:
 -->
 
 ---
+### Requirement: Payment method selection during expense entry
+
+The expense entry form SHALL display a payment method selector with three options: "Apple Pay", "Google Pay", and "實體卡". The selector SHALL appear as chip buttons above the inline card recommendation list. The default selection SHALL be "實體卡".
+
+The selected payment method SHALL affect the effective rate and estimated reward displayed for each card in the inline recommendation list in real time. The selected payment method SHALL be stored in the `Expense.paymentMethod` field when the expense is saved. The selector SHALL persist its state within the session (not reset between expenses).
+
+#### Scenario: Default payment method is physical card
+
+- **WHEN** user opens the expense entry form for the first time in a session
+- **THEN** "實體卡" SHALL be selected by default
+- **THEN** no payment method bonus SHALL be applied to any card's effective rate
+
+#### Scenario: Switching to Apple Pay updates recommendation rates
+
+- **WHEN** user selects "Apple Pay" and a card has `paymentMethodBonus.methods` including `'apple_pay'` with eligible tier rate 1.5%
+- **THEN** that card's displayed effective rate SHALL increase by 1.5% (subject to remaining tier cap)
+- **THEN** the recommendation list SHALL re-sort based on the updated effective rates
+
+#### Scenario: Payment method saved with expense
+
+- **WHEN** user selects "Google Pay" and submits an expense
+- **THEN** the saved `Expense.paymentMethod` SHALL be `'google_pay'`
+
+#### Scenario: Card without paymentMethodBonus unaffected by selector
+
+- **WHEN** user selects "Apple Pay" but a card has no `paymentMethodBonus`
+- **THEN** that card's effective rate SHALL remain unchanged (no bonus applied)
+
+<!-- @trace
+source: payment-method-bonus
+updated: 2026-04-07
+code:
+  - src/pages/ExpensePage.tsx
+  - src/types/index.ts
+-->
+
+
+<!-- @trace
+source: payment-method-bonus
+updated: 2026-04-07
+code:
+  - src/pages/ExpensePage.tsx
+  - src/types/index.ts
+  - src/components/CardForm.tsx
+  - src/lib/rewardCalc.ts
+-->
+
+---
 ### Requirement: Inline card recommendation during expense entry
 
-The expense entry form SHALL display a live-sorted list of all configured cards, ranked by effective reward rate for the currently selected store and entered amount. The list SHALL update immediately when the amount or store changes (no submit required). The top-ranked non-full card SHALL be highlighted as the auto-selected card. All other cards SHALL be shown below in order with their effective rate and, if a cap exists, a text showing the remaining cap amount.
+The expense entry form SHALL display a live-sorted list of all configured cards, ranked by effective reward rate for the currently selected store, entered amount, AND selected payment method. The list SHALL update immediately when the amount, store, or payment method changes (no submit required). The top-ranked non-full card SHALL be highlighted as the auto-selected card. All other cards SHALL be shown below in order with their effective rate and, if a cap exists, a text showing the remaining cap amount.
+
+Each card row in the recommendation list SHALL display which payment method to use. When a card has `paymentMethodBonus` and the currently selected payment method matches one of its supported methods AND at least one tier still has remaining cap, the card row SHALL display a badge indicating the recommended payment method (e.g. "Apple Pay" or "Google Pay"). When the selected method is "實體卡" or no bonus applies, no payment method badge SHALL appear.
 
 The top-ranked card in the inline list SHALL display a visual progress bar showing cap utilization: `(total_cap - remaining) / total_cap × 100%`. The bar SHALL only appear when the card has a `rewardLimit` or `spendLimit` configured. Cards with neither cap SHALL show no progress bar.
 
 Cards with `isFull: true` SHALL appear at the bottom of the list with a "本月已滿" label and SHALL NOT be selectable as the confirmed card.
 
+#### Scenario: Cards sorted by effective rate including payment method bonus
+
+- **WHEN** user selects "Apple Pay", Card A has effective rate 2.5% (no mobile bonus), Card B has effective rate 5.0% (2.5% base + 2.5% Apple Pay bonus, cap available)
+- **THEN** Card B SHALL rank first in the recommendation list
+- **THEN** Card B's row SHALL display an "Apple Pay" badge
+
+#### Scenario: Payment method badge hidden when bonus exhausted
+
+- **WHEN** a card's payment method bonus tiers are all at monthly cap
+- **THEN** no payment method badge SHALL appear for that card regardless of selected payment method
+- **THEN** the effective rate SHALL reflect only base rate and any store bonus
+
 #### Scenario: Cards sorted by effective rate for selected store
 
-- **WHEN** user selects store "唐吉訶德" and enters NT$1000
-- **THEN** cards SHALL be displayed sorted by effective rate descending
-- **THEN** the card with the highest effective rate SHALL be visually highlighted as auto-selected
+- **WHEN** user selects store "唐吉訶德" and Card A has 3% bonus for that store, Card B has 2.5% base rate
+- **THEN** Card A SHALL be automatically selected (highlighted) in the inline recommendation list
+- **THEN** the submit button SHALL use Card A unless the user taps Card B to override
+
+#### Scenario: Auto-selects next best card when top card is full
+
+- **WHEN** the highest-rate card for the selected store has `isFull: true`
+- **THEN** the system SHALL automatically select the next card in the ranked list that is not full
 
 #### Scenario: Top card shows progress bar when cap exists
 
@@ -185,10 +252,13 @@ Cards with `isFull: true` SHALL appear at the bottom of the list with a "本月�
 
 
 <!-- @trace
-source: smart-expense-entry
-updated: 2026-04-06
+source: payment-method-bonus
+updated: 2026-04-07
 code:
   - src/pages/ExpensePage.tsx
+  - src/types/index.ts
+  - src/components/CardForm.tsx
+  - src/lib/rewardCalc.ts
 -->
 
 ---
