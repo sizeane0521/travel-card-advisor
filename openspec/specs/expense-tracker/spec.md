@@ -8,55 +8,92 @@ TBD - created by archiving change 'travel-card-advisor'. Update Purpose after ar
 
 ### Requirement: Record a single expense
 
-The system SHALL allow users to record an expense by entering an amount and optionally selecting a store via chip buttons or an expanded store list. The system SHALL automatically select the highest-reward card based on the entered amount and selected store. The user SHALL be able to override the auto-selected card by tapping any other card in the inline recommendation list. The expense SHALL be timestamped with the current date and saved to the active trip.
+The system SHALL allow users to record an expense by entering an amount and optionally selecting a store via a search input field. The system SHALL automatically select the highest-reward card based on the entered amount and selected store. The user SHALL be able to override the auto-selected card by tapping any other card in the inline recommendation list. The expense SHALL be timestamped with the current date and saved to the active trip.
 
 When the active trip has an `exchangeRate` set (e.g. `{ currency: "JPY", rate: 0.22 }`):
 - The expense entry form SHALL display a foreign currency input field (e.g. "金額（JPY）")
 - The system SHALL convert the entered foreign amount to TWD by multiplying by the trip's exchange rate and rounding down to the nearest integer
-- The converted TWD amount SHALL be stored in `Expense.amount` and used for all reward calculations
-- The original foreign amount SHALL be stored in `Expense.foreignAmount: { currency: string; amount: number }`
-- Both the foreign amount and the TWD equivalent SHALL be displayed in the expense list entry
+- The system SHALL display the converted TWD amount in real time as the user types
 
-When the active trip has no `exchangeRate`:
-- The expense entry form SHALL display a TWD amount field (existing behavior)
-- `Expense.foreignAmount` SHALL not be set
+The store selection area SHALL use a search-first interaction model:
+- A text search input SHALL always be visible
+- A "一般消費" chip SHALL always be visible and selected by default
+- Store name chips SHALL only appear when the user has typed at least one character in the search input
+- Chips displayed SHALL be filtered to those matching the search query (case-insensitive substring match)
+- There SHALL be no default chip list, no "更多/收起" expand button, and no paginated chip display
 
-After submission, the form SHALL reset the amount to empty and the store selection to "General Purchase". The card selection SHALL remain as whatever was last confirmed.
+#### Scenario: Store search shows chips only when typing
 
-#### Scenario: Auto-selects best card on store change
+- **WHEN** the user has not typed anything in the store search box
+- **THEN** only the "一般消費" chip SHALL be displayed; no store chips SHALL appear
 
-- **WHEN** user selects store "唐吉訶德" and Card A has 3% bonus for that store, Card B has 2.5% base rate
-- **THEN** Card A SHALL be automatically selected (highlighted) in the inline recommendation list
-- **THEN** the submit button SHALL use Card A unless the user taps Card B to override
+#### Scenario: Store search filters as user types
 
-#### Scenario: Auto-selects next best card when top card is full
+- **WHEN** the user types "唐" in the store search box
+- **THEN** only store names containing "唐" SHALL appear as chips (e.g. "唐吉軻德")
+- **THEN** chips for non-matching stores SHALL NOT be displayed
 
-- **WHEN** the highest-rate card for the selected store has `isFull: true`
-- **THEN** the system SHALL automatically select the next card in the ranked list that is not full
+#### Scenario: Clearing search resets to default
 
-#### Scenario: Form resets after submission
-
-- **WHEN** user successfully submits an expense
-- **THEN** the amount field SHALL be cleared
-- **THEN** the store selection SHALL reset to "General Purchase" (store = null)
-
-#### Scenario: Log expense in JPY with exchange rate
-
-- **WHEN** the active trip has `exchangeRate: { currency: "JPY", rate: 0.22 }` and user enters ¥5000 and confirms
-- **THEN** `Expense.amount` SHALL be 1100 (floor of 5000 × 0.22)
-- **THEN** `Expense.foreignAmount` SHALL be `{ currency: "JPY", amount: 5000 }`
-- **THEN** the expense list SHALL display "¥5,000 (NT$1,100)"
-
-#### Scenario: Amount must be positive
-
-- **WHEN** user enters 0 or a negative number
-- **THEN** the system SHALL prevent saving and display a validation error
+- **WHEN** the user clears the search input (via the × button or by deleting all text)
+- **THEN** all store chips SHALL disappear and "一般消費" SHALL be the active selection
 
 
 <!-- @trace
-source: smart-expense-entry
-updated: 2026-04-06
+source: expense-ux-search-first-rate-breakdown
+updated: 2026-04-07
 code:
+  - src/lib/rewardCalc.ts
+  - src/pages/ExpensePage.tsx
+-->
+
+---
+### Requirement: Reward rate breakdown display
+
+The system SHALL display a breakdown of the effective reward rate for each card in the inline recommendation list, showing the individual contribution of each reward layer: base rate, payment method bonus, and store bonus.
+
+The breakdown SHALL be shown as a compact secondary line below the effective rate percentage, only when at least one bonus layer (payment method or store) is active for that card.
+
+Format: `基本{base} + AP{pm}` or `基本{base} + AP{pm} + 店家{store}` where:
+- `{base}` = card's base rate (always shown in breakdown when breakdown is visible)
+- `AP` label is used for Apple Pay; `GP` label is used for Google Pay
+- `+ AP{pm}` is shown only when `paymentMethod > 0`
+- `+ 店家{store}` is shown only when `store > 0`
+
+When no bonus is active (both `paymentMethod === 0` and `store === 0`), the breakdown line SHALL NOT be rendered.
+
+The breakdown data SHALL come from the `rateBreakdown` field on `CardAdvice`.
+
+#### Scenario: All three layers active
+
+- **WHEN** a card has base rate 2.5%, Apple Pay bonus 1.5%, and store bonus 3.0% all applying
+- **THEN** the breakdown line SHALL display "基本2.5 + AP1.5 + 店家3.0"
+- **THEN** the effective rate SHALL display "7.0%"
+
+#### Scenario: Only base and payment method active
+
+- **WHEN** no store is selected or no matching store bonus exists for the selected store
+- **THEN** the breakdown line SHALL display "基本2.5 + AP1.5"
+- **THEN** no "店家" segment SHALL appear in the breakdown
+
+#### Scenario: Only base rate, no bonuses
+
+- **WHEN** payment method is physical and no store bonus applies
+- **THEN** the breakdown line SHALL NOT be rendered
+- **THEN** only the effective rate percentage SHALL be displayed
+
+#### Scenario: Store bonus cap exceeded hides store from breakdown
+
+- **WHEN** a store bonus exists but its cap has been fully consumed this month
+- **THEN** `rateBreakdown.store` SHALL be 0
+- **THEN** the "店家" segment SHALL NOT appear in the breakdown line
+
+
+<!-- @trace
+source: expense-ux-search-first-rate-breakdown
+updated: 2026-04-07
+code:
+  - src/lib/rewardCalc.ts
   - src/pages/ExpensePage.tsx
 -->
 
@@ -209,76 +246,6 @@ updated: 2026-04-07
 code:
   - src/pages/ExpensePage.tsx
   - src/lib/rewardCalc.ts
--->
-
----
-### Requirement: Store chip selection in expense form
-
-The expense entry form SHALL display a text search input above the store chip list. The search input SHALL have placeholder text "搜尋店家…" and a clear button (×) that resets the store selection to null (一般消費) and clears the input text.
-
-When the search input is empty, the chip list SHALL show the first 5 store names from `getAllStoreNames(cards)` plus a "更多 ▼" button if more than 5 exist; tapping it SHALL expand to show all remaining chips.
-
-When the search input contains text, the chip list SHALL be filtered in real time to show only store names that include the query string (case-insensitive). The "更多 ▼ / 收起 ▲" button SHALL be hidden during active search. If no chips match the query, the chip list SHALL be empty (only "一般消費" remains).
-
-The "一般消費" chip SHALL always be visible regardless of the search query. It represents store = null.
-
-Tapping any chip SHALL:
-1. Set the store selection to that chip's store name
-2. Fill the search input with that store name
-3. Visually highlight the chip as selected
-
-Typing in the search input SHALL:
-1. Update the chip list filter in real time
-2. Set the store selection to the exact text entered (even if it does not match any chip)
-3. Remove the visual highlight from any previously selected chip if the text no longer matches it
-
-#### Scenario: Empty search shows default chip list
-
-- **WHEN** the search input is empty and 6 store names are configured
-- **THEN** the form SHALL display "一般消費" plus the first 5 store chips and a "更多 ▼" button
-
-#### Scenario: Typing filters chips in real time
-
-- **WHEN** user types "唐" into the search input
-- **THEN** only store chips whose name contains "唐" (e.g. "唐吉訶德") SHALL be displayed
-- **THEN** "一般消費" SHALL remain visible
-- **THEN** "更多 ▼" button SHALL be hidden
-
-#### Scenario: No matching chips shows empty list
-
-- **WHEN** user types "zzz" and no store name contains "zzz"
-- **THEN** only "一般消費" chip SHALL be visible
-- **THEN** the store selection SHALL be set to "zzz" (free-text)
-- **THEN** card recommendations SHALL recalculate using base rates (no store bonus match)
-
-#### Scenario: Tapping chip fills search input
-
-- **WHEN** user taps the "唐吉訶德" chip
-- **THEN** the search input SHALL display "唐吉訶德"
-- **THEN** the "唐吉訶德" chip SHALL be visually highlighted as selected
-- **THEN** card recommendations SHALL recalculate using that store's bonus rates
-
-#### Scenario: Clear button resets to general purchase
-
-- **WHEN** user taps the × clear button in the search input
-- **THEN** the search input SHALL be cleared
-- **THEN** the store selection SHALL be set to null (一般消費)
-- **THEN** "一般消費" chip SHALL be highlighted
-- **THEN** the full default chip list SHALL be restored
-
-#### Scenario: Tapping 一般消費 chip clears search
-
-- **WHEN** user taps "一般消費" chip
-- **THEN** the search input SHALL be cleared
-- **THEN** store selection SHALL be set to null
-- **THEN** card recommendations SHALL recalculate using base rates
-
-
-<!-- @trace
-source: expense-store-search
-updated: 2026-04-07
-code:
-  - src/pages/ExpensePage.tsx
 -->
 
 ---

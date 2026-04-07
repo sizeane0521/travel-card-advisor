@@ -35,6 +35,11 @@ export interface CardAdvice {
   remainingAmount: number;
   paymentMethodBadge?: 'apple_pay' | 'google_pay';
   caps: CapProgress[];
+  rateBreakdown: {
+    base: number;
+    paymentMethod: number;
+    store: number;
+  };
 }
 
 /**
@@ -133,10 +138,11 @@ export function calcCardAdvice(
   const { rewardLimit, spendLimit } = card.monthlyCap;
 
   if (rewardLimit !== undefined && monthlyReward >= rewardLimit) {
-    return { card, effectiveRate: 0, isFull: true, remainingCapDisplay: 'NT$0 回饋剩餘', remainingAmount: 0, caps: [] };
+    return { card, effectiveRate: 0, isFull: true, remainingCapDisplay: 'NT$0 回饋剩餘', remainingAmount: 0, caps: [], rateBreakdown: { base: 0, paymentMethod: 0, store: 0 } };
   }
 
   let applicableRate = card.baseRate;
+  let storeAppliedRate = 0;
   const spendCapReached = spendLimit !== undefined && monthlySpend >= spendLimit;
   const caps: CapProgress[] = [];
 
@@ -154,6 +160,7 @@ export function calcCardAdvice(
 
       if (bonus.cap === 0 || storeSpend < bonus.cap) {
         applicableRate += bonus.rate;
+        storeAppliedRate = bonus.rate;
       }
 
       if (bonus.cap > 0) {
@@ -212,6 +219,7 @@ export function calcCardAdvice(
     remainingAmount,
     paymentMethodBadge,
     caps,
+    rateBreakdown: { base: card.baseRate, paymentMethod: pmBonus.bonusRate, store: storeAppliedRate },
   };
 }
 

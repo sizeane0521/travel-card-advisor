@@ -29,8 +29,6 @@ function estimateReward(
   return cappedBase + pmBonus.bonusReward
 }
 
-const STORE_CHIP_LIMIT = 5
-
 export default function ExpensePage() {
   const { data, dispatch } = useStore()
   const activeTrip = data.trips.find(t => t.id === data.activeTripId) ?? null
@@ -39,7 +37,6 @@ export default function ExpensePage() {
   const [store, setStore] = useState<string>('')
   // task 1.1: selectedCardId replaces cardId
   const [selectedCardId, setSelectedCardId] = useState<string>('')
-  const [showAllStores, setShowAllStores] = useState(false)
   const [storeQuery, setStoreQuery] = useState('')
   const [amountError, setAmountError] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<'apple_pay' | 'google_pay' | 'physical'>('apple_pay')
@@ -72,12 +69,10 @@ export default function ExpensePage() {
     return selectedCardId
   })()
 
-  // Store chip visibility: filter by query when searching, else show paginated default
-  const isSearching = storeQuery.length > 0
-  const filteredStores = isSearching
+  // Search-first: only show chips when user has typed something
+  const filteredStores = storeQuery.length > 0
     ? storeNames.filter(n => n.toLowerCase().includes(storeQuery.toLowerCase()))
-    : (showAllStores ? storeNames : storeNames.slice(0, STORE_CHIP_LIMIT))
-  const hasMoreStores = !isSearching && storeNames.length > STORE_CHIP_LIMIT
+    : []
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -250,17 +245,6 @@ export default function ExpensePage() {
               </button>
             ))}
 
-            {/* expand/collapse: only when not searching */}
-            {hasMoreStores && (
-              <button
-                type="button"
-                onClick={() => setShowAllStores(v => !v)}
-                className="px-3 py-1.5 rounded-lg text-sm border transition-all"
-                style={{ background: 'transparent', color: '#9a7040', borderColor: '#3d2e14', borderStyle: 'dashed' }}
-              >
-                {showAllStores ? '收起 ▲' : '更多 ▼'}
-              </button>
-            )}
           </div>
         </div>
 
@@ -352,6 +336,13 @@ export default function ExpensePage() {
                         ) : (
                           <div>
                             <span className="text-lg font-bold" style={{ color: '#d4a017' }}>{advice.effectiveRate}%</span>
+                            {(advice.rateBreakdown.paymentMethod > 0 || advice.rateBreakdown.store > 0) && (
+                              <p className="text-xs" style={{ color: '#c8a060' }}>
+                                基本{advice.rateBreakdown.base}
+                                {advice.rateBreakdown.paymentMethod > 0 && ` + ${advice.paymentMethodBadge === 'apple_pay' ? 'AP' : 'GP'}${advice.rateBreakdown.paymentMethod}`}
+                                {advice.rateBreakdown.store > 0 && ` + 店家${advice.rateBreakdown.store}`}
+                              </p>
+                            )}
                             {twdAmount > 0 && (
                               <p className="text-xs" style={{ color: '#4ade80' }}>
                                 回饋 NT${estimated.toLocaleString()}
