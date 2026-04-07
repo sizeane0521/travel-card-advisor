@@ -39,6 +39,7 @@ export default function ExpensePage() {
   // task 1.1: selectedCardId replaces cardId
   const [selectedCardId, setSelectedCardId] = useState<string>('')
   const [showAllStores, setShowAllStores] = useState(false)
+  const [storeQuery, setStoreQuery] = useState('')
   const [amountError, setAmountError] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<'apple_pay' | 'google_pay' | 'physical'>('physical')
 
@@ -69,9 +70,12 @@ export default function ExpensePage() {
     return selectedCardId
   })()
 
-  // Store chip visibility
-  const visibleStores = showAllStores ? storeNames : storeNames.slice(0, STORE_CHIP_LIMIT)
-  const hasMoreStores = storeNames.length > STORE_CHIP_LIMIT
+  // Store chip visibility: filter by query when searching, else show paginated default
+  const isSearching = storeQuery.length > 0
+  const filteredStores = isSearching
+    ? storeNames.filter(n => n.toLowerCase().includes(storeQuery.toLowerCase()))
+    : (showAllStores ? storeNames : storeNames.slice(0, STORE_CHIP_LIMIT))
+  const hasMoreStores = !isSearching && storeNames.length > STORE_CHIP_LIMIT
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -116,6 +120,7 @@ export default function ExpensePage() {
     // task 6.1: reset amount and store, keep selectedCardId (re-ranks on next render)
     setAmount('')
     setStore('')
+    setStoreQuery('')
   }
 
   function handleDelete(expenseId: string) {
@@ -184,29 +189,57 @@ export default function ExpensePage() {
           {amountError && <p className="text-xs mt-1" style={{ color: '#c0392b' }}>{amountError}</p>}
         </div>
 
-        {/* task 3.1 + 3.2: store chips */}
+        {/* store search + chips */}
         <div>
           <label className="text-xs text-[#c8a060] block mb-2 uppercase tracking-wider">店家</label>
+
+          {/* Search input */}
+          <div className="relative mb-2">
+            <input
+              type="text"
+              value={storeQuery}
+              onChange={e => {
+                const q = e.target.value
+                setStoreQuery(q)
+                setStore(q)
+              }}
+              placeholder="搜尋店家…"
+              className="w-full border rounded-lg px-3 py-2 pr-8 text-sm focus:outline-none"
+            />
+            {storeQuery && (
+              <button
+                type="button"
+                onClick={() => { setStoreQuery(''); setStore('') }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-xs px-1"
+                style={{ color: '#9a7040' }}
+                aria-label="清除"
+              >
+                ×
+              </button>
+            )}
+          </div>
+
+          {/* Chips */}
           <div className="flex flex-wrap gap-2">
-            {/* 一般消費 chip */}
+            {/* 一般消費：always visible */}
             <button
               type="button"
-              onClick={() => setStore('')}
+              onClick={() => { setStore(''); setStoreQuery('') }}
               className="px-3 py-1.5 rounded-lg text-sm border transition-all"
-              style={store === ''
+              style={store === '' && storeQuery === ''
                 ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a', fontWeight: 600 }
                 : { background: 'transparent', color: '#c8a060', borderColor: '#4a3418' }}
             >
               一般消費
             </button>
 
-            {visibleStores.map(n => (
+            {filteredStores.map(n => (
               <button
                 key={n}
                 type="button"
-                onClick={() => setStore(n)}
+                onClick={() => { setStore(n); setStoreQuery(n) }}
                 className="px-3 py-1.5 rounded-lg text-sm border transition-all"
-                style={store === n
+                style={store === n && storeQuery === n
                   ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a', fontWeight: 600 }
                   : { background: 'transparent', color: '#c8a060', borderColor: '#4a3418' }}
               >
@@ -214,7 +247,7 @@ export default function ExpensePage() {
               </button>
             ))}
 
-            {/* task 3.2: expand/collapse more stores */}
+            {/* expand/collapse: only when not searching */}
             {hasMoreStores && (
               <button
                 type="button"
@@ -222,7 +255,7 @@ export default function ExpensePage() {
                 className="px-3 py-1.5 rounded-lg text-sm border transition-all"
                 style={{ background: 'transparent', color: '#9a7040', borderColor: '#3d2e14', borderStyle: 'dashed' }}
               >
-                {showAllStores ? '收起 ▲' : `更多 ▼`}
+                {showAllStores ? '收起 ▲' : '更多 ▼'}
               </button>
             )}
           </div>
