@@ -19,6 +19,14 @@ export function getMonthlyReward(expenses: Expense[], cardId: string, monthStr?:
     .reduce((sum, e) => sum + e.estimatedReward, 0);
 }
 
+export interface CapProgress {
+  type: 'reward' | 'spend' | 'store_bonus' | 'payment_method';
+  label: string;
+  current: number;
+  total: number;
+  percentage: number;
+}
+
 export interface CardAdvice {
   card: Card;
   effectiveRate: number;
@@ -26,6 +34,7 @@ export interface CardAdvice {
   remainingCapDisplay: string;
   remainingAmount: number;
   paymentMethodBadge?: 'apple_pay' | 'google_pay';
+  caps: CapProgress[];
 }
 
 /**
@@ -43,6 +52,7 @@ function findStoreBonus(card: Card, storeName: string): StoreBonus | null {
 interface PaymentMethodBonusResult {
   bonusRate: number;   // sum of eligible tier rates with remaining cap (for display)
   bonusReward: number; // actual reward amount for a given spend amount (capped per tier)
+  tierProgress: CapProgress[];
 }
 
 /**
@@ -60,10 +70,10 @@ export function calcPaymentMethodBonus(
   prerequisiteOverrides?: Record<number, boolean>
 ): PaymentMethodBonusResult {
   if (!card.paymentMethodBonus || paymentMethod === 'physical') {
-    return { bonusRate: 0, bonusReward: 0 };
+    return { bonusRate: 0, bonusReward: 0, tierProgress: [] };
   }
   if (!card.paymentMethodBonus.methods.includes(paymentMethod)) {
-    return { bonusRate: 0, bonusReward: 0 };
+    return { bonusRate: 0, bonusReward: 0, tierProgress: [] };
   }
 
   const month = monthStr ?? monthPrefix();
@@ -77,6 +87,7 @@ export function calcPaymentMethodBonus(
   let remainingAccrued = totalAccrued;
   let totalBonusRate = 0;
   let totalBonusReward = 0;
+  const tierProgress: CapProgress[] = [];
 
   for (const [tierIdx, tier] of card.paymentMethodBonus.tiers.entries()) {
     // Skip tiers with unmet prerequisites; per-expense override takes precedence over card setting
@@ -89,6 +100,14 @@ export function calcPaymentMethodBonus(
     remainingAccrued = Math.max(0, remainingAccrued - tierUsed);
     const tierRemaining = tier.monthlyCap - tierUsed;
 
+    tierProgress.push({
+      type: 'payment_method',
+      label: tier.prerequisite ?? `行動支付加碼 Tier ${tierIdx + 1}`,
+      current: tierUsed,
+      total: tier.monthlyCap,
+      percentage: (tierUsed / tier.monthlyCap) * 100,
+    });
+
     if (tierRemaining <= 0) continue; // tier exhausted
 
     totalBonusRate += tier.rate;
@@ -97,7 +116,7 @@ export function calcPaymentMethodBonus(
     }
   }
 
-  return { bonusRate: totalBonusRate, bonusReward: totalBonusReward };
+  return { bonusRate: totalBonusRate, bonusReward: totalBonusReward, tierProgress };
 }
 
 export function calcCardAdvice(
@@ -114,11 +133,12 @@ export function calcCardAdvice(
   const { rewardLimit, spendLimit } = card.monthlyCap;
 
   if (rewardLimit !== undefined && monthlyReward >= rewardLimit) {
-    return { card, effectiveRate: 0, isFull: true, remainingCapDisplay: 'NT$0 回饋剩餘', remainingAmount: 0 };
+    return { card, effectiveRate: 0, isFull: true, remainingCapDisplay: 'NT$0 回饋剩餘', remainingAmount: 0, caps: [] };
   }
 
   let applicableRate = card.baseRate;
   const spendCapReached = spendLimit !== undefined && monthlySpend >= spendLimit;
+  const caps: CapProgress[] = [];
 
   if (!spendCapReached && storeName) {
     const bonus = findStoreBonus(card, storeName);
@@ -133,7 +153,17 @@ export function calcCardAdvice(
             .reduce((sum, e) => sum + e.amount, 0);
 
       if (bonus.cap === 0 || storeSpend < bonus.cap) {
-        applicableRate = bonus.rate;
+        applicableRate += bonus.rate;
+      }
+
+      if (bonus.cap > 0) {
+        caps.push({
+          type: 'store_bonus',
+          label: `${bonus.storeName} 加碼`,
+          current: storeSpend,
+          total: bonus.cap,
+          percentage: (storeSpend / bonus.cap) * 100,
+        });
       }
     }
   }
@@ -144,16 +174,32 @@ export function calcCardAdvice(
   if (rewardLimit !== undefined) {
     remainingAmount = Math.max(0, rewardLimit - monthlyReward);
     remainingCapDisplay = `NT$${remainingAmount.toLocaleString()} 回饋剩餘`;
+    caps.push({
+      type: 'reward',
+      label: '月回饋上限',
+      current: monthlyReward,
+      total: rewardLimit,
+      percentage: (monthlyReward / rewardLimit) * 100,
+    });
   } else if (spendLimit !== undefined) {
     remainingAmount = Math.max(0, spendLimit - monthlySpend);
     remainingCapDisplay = spendCapReached
       ? `NT$0 消費額度剩餘（基本 ${card.baseRate}%）`
       : `NT$${remainingAmount.toLocaleString()} 消費額度剩餘`;
+    caps.push({
+      type: 'spend',
+      label: '月消費額度',
+      current: monthlySpend,
+      total: spendLimit,
+      percentage: (monthlySpend / spendLimit) * 100,
+    });
   }
 
   // Payment method bonus
   const pm = paymentMethod ?? 'physical';
   const pmBonus = calcPaymentMethodBonus(card, pm, 0, tripExpenses, month, prerequisiteOverrides);
+
+  caps.push(...pmBonus.tierProgress);
 
   const paymentMethodBadge: CardAdvice['paymentMethodBadge'] =
     pmBonus.bonusRate > 0 && (pm === 'apple_pay' || pm === 'google_pay') ? pm : undefined;
@@ -165,6 +211,7 @@ export function calcCardAdvice(
     remainingCapDisplay,
     remainingAmount,
     paymentMethodBadge,
+    caps,
   };
 }
 

@@ -1,6 +1,36 @@
 import { useState } from 'react'
 import { useStore } from '../store/useStore'
-import { getAllStoreNames, getSortedRecommendations } from '../lib/rewardCalc'
+import { getAllStoreNames, getSortedRecommendations, type CapProgress } from '../lib/rewardCalc'
+
+function capColor(pct: number): string {
+  if (pct >= 90) return '#c0392b';
+  if (pct >= 70) return '#e67e22';
+  return '#27ae60';
+}
+
+function CapBars({ caps }: { caps: CapProgress[] }) {
+  if (caps.length === 0) return null;
+  const sorted = [...caps].sort((a, b) => b.percentage - a.percentage);
+  return (
+    <div className="mt-3 space-y-2">
+      {sorted.map((cap, i) => {
+        const pct = Math.min(100, cap.percentage);
+        const color = capColor(pct);
+        return (
+          <div key={i}>
+            <div className="flex justify-between text-xs mb-0.5" style={{ color: '#c8a060' }}>
+              <span>{cap.label}</span>
+              <span>NT${cap.current.toLocaleString()} / NT${cap.total.toLocaleString()}</span>
+            </div>
+            <div className="rounded-full overflow-hidden" style={{ height: 5, background: '#2a1e0a' }}>
+              <div style={{ width: `${pct}%`, background: color, height: '100%', borderRadius: 9999, transition: 'width 0.3s' }} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function AdvisorPage() {
   const { data } = useStore()
@@ -116,6 +146,7 @@ export default function AdvisorPage() {
                   )}
                 </div>
               </div>
+              {!advice.isFull && <CapBars caps={advice.caps} />}
             </div>
           ))}
         </div>
