@@ -1,10 +1,4 @@
-# card-advisor Specification
-
-## Purpose
-
-TBD - created by archiving change 'travel-card-advisor'. Update Purpose after archive.
-
-## Requirements
+## ADDED Requirements
 
 ### Requirement: Store bonus proportional cap truncation
 
@@ -43,17 +37,8 @@ When `StoreBonus.cap === 0`, the bonus SHALL apply to the full expense amount wi
 - **THEN** the full expense amount SHALL be used for bonus rate calculation
 - **THEN** no truncation SHALL occur
 
-
-<!-- @trace
-source: fix-store-tags-reward-calc-and-warnings
-updated: 2026-04-07
-code:
-  - src/lib/rewardCalc.ts
-  - src/pages/ExpensePage.tsx
-  - src/types/index.ts
--->
-
 ---
+
 ### Requirement: Reward breakdown structure in calcExpenseReward
 
 The `calcExpenseReward()` function SHALL return a `breakdown` object alongside the existing `estimatedReward` and `paymentMethodReward` fields.
@@ -80,17 +65,8 @@ The `breakdown` object SHALL contain:
 - **THEN** `breakdown.storeCapped` SHALL be `true`
 - **THEN** `breakdown.storeCapRemaining` SHALL be `10` (the actual capped reward used)
 
-
-<!-- @trace
-source: fix-store-tags-reward-calc-and-warnings
-updated: 2026-04-07
-code:
-  - src/lib/rewardCalc.ts
-  - src/pages/ExpensePage.tsx
-  - src/types/index.ts
--->
-
 ---
+
 ### Requirement: Operation warnings on Card type
 
 The `Card` type SHALL support an optional `operationWarnings` field: an array of objects, each with `paymentMethod` (`'apple_pay' | 'google_pay'`) and `message` (string).
@@ -111,21 +87,3 @@ When present, the system SHALL surface these warnings to the UI when the user se
 
 - **WHEN** a card has a warning for `apple_pay` only and the user selects Google Pay
 - **THEN** no warning SHALL be displayed for that card
-
-<!-- @trace
-source: fix-store-tags-reward-calc-and-warnings
-updated: 2026-04-07
-code:
-  - src/types/index.ts
-  - src/lib/rewardCalc.ts
-  - src/pages/ExpensePage.tsx
--->
-
-<!-- @trace
-source: fix-store-tags-reward-calc-and-warnings
-updated: 2026-04-07
-code:
-  - src/lib/rewardCalc.ts
-  - src/pages/ExpensePage.tsx
-  - src/types/index.ts
--->

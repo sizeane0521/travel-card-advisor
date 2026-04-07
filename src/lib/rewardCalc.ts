@@ -27,6 +27,14 @@ export interface CapProgress {
   percentage: number;
 }
 
+export interface RewardBreakdown {
+  base: number;          // NT$ from base rate
+  store: number;         // NT$ from store bonus (after proportional cap truncation)
+  paymentMethod: number; // NT$ from payment method bonus
+  storeCapped: boolean;  // true if store bonus was truncated by cap
+  storeCapRemaining: number; // actual store bonus reward applied when truncated (0 if not capped)
+}
+
 export interface CardAdvice {
   card: Card;
   effectiveRate: number;
@@ -40,6 +48,8 @@ export interface CardAdvice {
     paymentMethod: number;
     store: number;
   };
+  // Exposes matched store bonus info for proportional truncation in calcExpenseReward
+  storeBonusInfo?: { bonus: StoreBonus; storeSpend: number } | null;
 }
 
 /**
@@ -138,13 +148,14 @@ export function calcCardAdvice(
   const { rewardLimit, spendLimit } = card.monthlyCap;
 
   if (rewardLimit !== undefined && monthlyReward >= rewardLimit) {
-    return { card, effectiveRate: 0, isFull: true, remainingCapDisplay: 'NT$0 回饋剩餘', remainingAmount: 0, caps: [], rateBreakdown: { base: 0, paymentMethod: 0, store: 0 } };
+    return { card, effectiveRate: 0, isFull: true, remainingCapDisplay: 'NT$0 回饋剩餘', remainingAmount: 0, caps: [], rateBreakdown: { base: 0, paymentMethod: 0, store: 0 }, storeBonusInfo: null };
   }
 
   let applicableRate = card.baseRate;
   let storeAppliedRate = 0;
   const spendCapReached = spendLimit !== undefined && monthlySpend >= spendLimit;
   const caps: CapProgress[] = [];
+  let storeBonusInfo: CardAdvice['storeBonusInfo'] = null;
 
   if (!spendCapReached && storeName) {
     const bonus = findStoreBonus(card, storeName);
@@ -158,9 +169,13 @@ export function calcCardAdvice(
             .filter(e => e.cardId === card.id && e.store === storeName && e.date.startsWith(month))
             .reduce((sum, e) => sum + e.amount, 0);
 
-      if (bonus.cap === 0 || storeSpend < bonus.cap) {
+      const remainingCap = bonus.cap === 0 ? Infinity : Math.max(0, bonus.cap - storeSpend);
+
+      if (remainingCap > 0) {
         applicableRate += bonus.rate;
         storeAppliedRate = bonus.rate;
+        // Expose bonus info for proportional reward calculation in calcExpenseReward
+        storeBonusInfo = { bonus, storeSpend };
       }
 
       if (bonus.cap > 0) {
@@ -220,6 +235,7 @@ export function calcCardAdvice(
     paymentMethodBadge,
     caps,
     rateBreakdown: { base: card.baseRate, paymentMethod: pmBonus.bonusRate, store: storeAppliedRate },
+    storeBonusInfo,
   };
 }
 
@@ -231,23 +247,64 @@ export function calcExpenseReward(
   paymentMethod?: 'apple_pay' | 'google_pay' | 'physical',
   monthStr?: string,
   prerequisiteOverrides?: Record<number, boolean>
-): { estimatedReward: number; paymentMethodReward: number } {
+): { estimatedReward: number; paymentMethodReward: number; breakdown: RewardBreakdown } {
   const advice = calcCardAdvice(card, storeName, tripExpenses, paymentMethod, monthStr, prerequisiteOverrides);
-  if (advice.isFull) return { estimatedReward: 0, paymentMethodReward: 0 };
+  if (advice.isFull) {
+    return {
+      estimatedReward: 0,
+      paymentMethodReward: 0,
+      breakdown: { base: 0, store: 0, paymentMethod: 0, storeCapped: false, storeCapRemaining: 0 },
+    };
+  }
 
   const pm = paymentMethod ?? 'physical';
   const pmBonus = calcPaymentMethodBonus(card, pm, amount, tripExpenses, monthStr, prerequisiteOverrides);
 
-  const baseAndStoreReward = Math.floor((amount * (advice.effectiveRate - pmBonus.bonusRate)) / 100);
-  let cappedBaseReward = baseAndStoreReward;
+  // Base reward (no cap)
+  const baseReward = Math.floor(amount * advice.rateBreakdown.base / 100);
 
-  if (card.monthlyCap.rewardLimit !== undefined) {
-    cappedBaseReward = Math.min(baseAndStoreReward, advice.remainingAmount);
+  // Store bonus reward: proportional truncation when approaching cap
+  let storeBonusReward = 0;
+  let storeCapped = false;
+  let storeCapRemaining = 0;
+
+  if (advice.storeBonusInfo) {
+    const { bonus, storeSpend } = advice.storeBonusInfo;
+    if (bonus.cap === 0) {
+      // Unlimited store bonus
+      storeBonusReward = Math.floor(amount * bonus.rate / 100);
+    } else {
+      const remainingSpendCap = Math.max(0, bonus.cap - storeSpend);
+      const eligibleAmount = Math.min(amount, remainingSpendCap);
+      storeBonusReward = Math.floor(eligibleAmount * bonus.rate / 100);
+      storeCapped = amount > remainingSpendCap;
+      storeCapRemaining = storeCapped ? storeBonusReward : 0;
+    }
   }
 
-  const estimatedReward = cappedBaseReward + pmBonus.bonusReward;
+  // Apply overall rewardLimit cap to base + store combined
+  const baseAndStore = baseReward + storeBonusReward;
+  const cappedBaseAndStore = card.monthlyCap.rewardLimit !== undefined
+    ? Math.min(baseAndStore, advice.remainingAmount)
+    : baseAndStore;
 
-  return { estimatedReward, paymentMethodReward: pmBonus.bonusReward };
+  const estimatedReward = cappedBaseAndStore + pmBonus.bonusReward;
+
+  // For breakdown: distribute cap reduction proportionally (store absorbs first, then base)
+  const cappedStore = Math.min(storeBonusReward, cappedBaseAndStore);
+  const cappedBase = cappedBaseAndStore - cappedStore;
+
+  return {
+    estimatedReward,
+    paymentMethodReward: pmBonus.bonusReward,
+    breakdown: {
+      base: cappedBase,
+      store: cappedStore,
+      paymentMethod: pmBonus.bonusReward,
+      storeCapped,
+      storeCapRemaining,
+    },
+  };
 }
 
 export function getSortedRecommendations(
@@ -270,14 +327,13 @@ export function getSortedRecommendations(
 }
 
 /**
- * task 5.3: Returns all unique store names — both category names (storeName)
- * and individual stores from stores[] arrays — sorted alphabetically.
+ * Returns all unique physical store names from stores[] arrays, sorted alphabetically.
+ * StoreBonus.storeName (category label) is excluded — only actual store names are returned.
  */
 export function getAllStoreNames(cards: Card[]): string[] {
   const names = new Set<string>();
   for (const card of cards) {
     for (const bonus of card.storeBonus) {
-      names.add(bonus.storeName);
       for (const store of (bonus.stores ?? [])) {
         names.add(store);
       }

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useStore } from '../store/useStore'
-import { getAllStoreNames, getSortedRecommendations, calcExpenseReward, calcPaymentMethodBonus } from '../lib/rewardCalc'
-import type { CardAdvice } from '../lib/rewardCalc'
+import { getAllStoreNames, getSortedRecommendations, calcExpenseReward } from '../lib/rewardCalc'
+import type { CardAdvice, RewardBreakdown } from '../lib/rewardCalc'
 
 function todayStr(): string {
   return new Date().toISOString().slice(0, 10)
@@ -11,22 +11,13 @@ function genId(): string {
   return `exp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
 }
 
-// Estimate reward for a card from its advice + current twd amount
-function estimateReward(
-  advice: CardAdvice,
-  twdAmount: number,
-  paymentMethod: 'apple_pay' | 'google_pay' | 'physical',
-  tripExpenses: import('../types').Expense[],
-  prerequisiteOverrides?: Record<number, boolean>
-): number {
-  if (advice.isFull || twdAmount <= 0) return 0
-  const pmBonus = calcPaymentMethodBonus(advice.card, paymentMethod, twdAmount, tripExpenses, undefined, prerequisiteOverrides)
-  const baseRate = advice.effectiveRate - pmBonus.bonusRate
-  const baseReward = Math.floor(twdAmount * baseRate / 100)
-  const cappedBase = advice.card.monthlyCap.rewardLimit !== undefined
-    ? Math.min(baseReward, advice.remainingAmount)
-    : baseReward
-  return cappedBase + pmBonus.bonusReward
+function formatBreakdown(total: number, bd: RewardBreakdown, storeBonusLabel: string): string {
+  const parts: string[] = []
+  if (bd.base > 0) parts.push(`基本 NT$${bd.base.toLocaleString()}`)
+  if (bd.store > 0) parts.push(`${storeBonusLabel}加碼 NT$${bd.store.toLocaleString()}`)
+  if (bd.paymentMethod > 0) parts.push(`行動支付加碼 NT$${bd.paymentMethod.toLocaleString()}`)
+  if (parts.length <= 1) return `NT$${total.toLocaleString()}`
+  return `NT$${total.toLocaleString()} = ${parts.join(' + ')}`
 }
 
 export default function ExpensePage() {
@@ -280,7 +271,15 @@ export default function ExpensePage() {
               {recommendations.map((advice, idx) => {
                 const isSelected = advice.card.id === effectiveSelectedCardId
                 const isTop = idx === 0 && !advice.isFull
-                const estimated = estimateReward(advice, twdAmount, paymentMethod, tripExpenses, prereqOverrides[advice.card.id])
+                const rewardInfo = twdAmount > 0 && !advice.isFull
+                  ? calcExpenseReward(advice.card, twdAmount, store || null, tripExpenses, paymentMethod, undefined, prereqOverrides[advice.card.id])
+                  : null
+                const estimated = rewardInfo?.estimatedReward ?? 0
+                const breakdown = rewardInfo?.breakdown ?? null
+                const storeBonusLabel = advice.storeBonusInfo?.bonus.storeName ?? store
+                const opWarning = paymentMethod !== 'physical'
+                  ? (advice.card.operationWarnings ?? []).find(w => w.paymentMethod === paymentMethod)?.message
+                  : undefined
 
                 // task 2.2: progress bar data
                 const cap = advice.card.monthlyCap.rewardLimit ?? advice.card.monthlyCap.spendLimit
@@ -343,9 +342,9 @@ export default function ExpensePage() {
                                 {advice.rateBreakdown.store > 0 && ` + 店家${advice.rateBreakdown.store}`}
                               </p>
                             )}
-                            {twdAmount > 0 && (
+                            {twdAmount > 0 && breakdown && (
                               <p className="text-xs" style={{ color: '#4ade80' }}>
-                                回饋 NT${estimated.toLocaleString()}
+                                {formatBreakdown(estimated, breakdown, storeBonusLabel)}
                               </p>
                             )}
                           </div>
@@ -366,7 +365,19 @@ export default function ExpensePage() {
                       </div>
                     )}
 
-                    {/* task 2.3: no-cap card shows only rate (handled above — no bar rendered) */}
+                    {/* Store bonus cap truncation warning */}
+                    {breakdown?.storeCapped && (
+                      <p className="text-xs mt-1.5" style={{ color: '#f59e0b' }}>
+                        ⚠️ {storeBonusLabel}加碼額度本次僅剩 NT${breakdown.storeCapRemaining.toLocaleString()}，總額中已包含此部分
+                      </p>
+                    )}
+
+                    {/* Operation warning (e.g. QUICPay caution) */}
+                    {opWarning && (
+                      <p className="text-xs mt-1.5" style={{ color: '#f59e0b' }}>
+                        ⚠️ {opWarning}
+                      </p>
+                    )}
 
                     {/* Prerequisite tier toggles: shown when mobile payment selected and card has conditional tiers */}
                     {paymentMethod !== 'physical' &&

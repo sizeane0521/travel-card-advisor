@@ -33,6 +33,7 @@ export interface Card {
   paymentMethodBonus?: PaymentMethodBonus;
   validFrom?: string;      // promotion start date YYYY-MM-DD
   validTo?: string;        // promotion end date YYYY-MM-DD
+  operationWarnings?: { paymentMethod: 'apple_pay' | 'google_pay'; message: string }[];
 }
 
 export interface Expense {
