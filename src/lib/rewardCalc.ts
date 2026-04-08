@@ -60,8 +60,11 @@ function findStoreBonus(card: Card, storeName: string): StoreBonus | null {
   // Exact category name match
   const byCategory = card.storeBonus.find(b => b.storeName === storeName);
   if (byCategory) return byCategory;
-  // Search actual store names in stores[] arrays
-  return card.storeBonus.find(b => (b.stores ?? []).includes(storeName)) ?? null;
+  // Search actual store names in stores[] and subCategories[].stores arrays
+  return card.storeBonus.find(b =>
+    (b.stores ?? []).includes(storeName) ||
+    (b.subCategories ?? []).some(sub => sub.stores.includes(storeName))
+  ) ?? null;
 }
 
 interface PaymentMethodBonusResult {
@@ -110,6 +113,22 @@ export function calcPaymentMethodBonus(
       ? prerequisiteOverrides[tierIdx]
       : tier.prerequisiteMet;
     if (tier.prerequisite !== undefined && prereqMet !== true) continue;
+
+    // monthlyCap = 0 means unlimited (no cap for this tier)
+    if (tier.monthlyCap === 0) {
+      totalBonusRate += tier.rate;
+      if (amount > 0) {
+        totalBonusReward += Math.floor(amount * tier.rate / 100);
+      }
+      tierProgress.push({
+        type: 'payment_method',
+        label: tier.prerequisite ?? `行動支付加碼 Tier ${tierIdx + 1}`,
+        current: 0,
+        total: 0,
+        percentage: 0,
+      });
+      continue;
+    }
 
     const tierUsed = Math.min(remainingAccrued, tier.monthlyCap);
     remainingAccrued = Math.max(0, remainingAccrued - tierUsed);
