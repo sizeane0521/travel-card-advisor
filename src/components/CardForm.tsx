@@ -222,7 +222,7 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
       setBonuses(result.storeRules.map(r => ({
         storeName: r.categoryName,
         stores: r.stores,
-        subCategories: [],
+        subCategories: r.subCategories ?? [],
         rate: r.bonusRate,
         cap: r.spendCap,
         capPeriod: r.capPeriod,

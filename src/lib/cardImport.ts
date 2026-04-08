@@ -13,6 +13,7 @@ export interface CardImportResult {
     bonusRate: number
     spendCap: number
     capPeriod: 'monthly' | 'period'
+    subCategories?: { label: string; stores: string[] }[]
   }[]
   paymentMethodBonusTiers?: {
     rate: number
@@ -76,6 +77,18 @@ export function parseClaudeResponse(raw: string): CardImportResult | null {
         if (!rule || typeof rule !== 'object') continue
         const categoryName = typeof rule.categoryName === 'string' ? rule.categoryName : ''
         if (!categoryName) continue
+        const subCategories: { label: string; stores: string[] }[] | undefined =
+          Array.isArray(rule.subCategories)
+            ? rule.subCategories
+                .filter((sc: unknown) => sc && typeof sc === 'object')
+                .map((sc: { label?: unknown; stores?: unknown }) => ({
+                  label: typeof sc.label === 'string' ? sc.label : '',
+                  stores: Array.isArray(sc.stores)
+                    ? sc.stores.filter((s: unknown) => typeof s === 'string')
+                    : [],
+                }))
+                .filter((sc: { label: string; stores: string[] }) => sc.label)
+            : undefined
         storeRules.push({
           categoryName,
           stores: Array.isArray(rule.stores)
@@ -84,6 +97,7 @@ export function parseClaudeResponse(raw: string): CardImportResult | null {
           bonusRate: typeof rule.bonusRate === 'number' ? rule.bonusRate : 0,
           spendCap: typeof rule.spendCap === 'number' ? rule.spendCap : 0,
           capPeriod: rule.capPeriod === 'period' ? 'period' : 'monthly',
+          ...(subCategories ? { subCategories } : {}),
         })
       }
     }
@@ -191,7 +205,10 @@ export async function parseCardFromHtml(
       "stores": ["實際店家名稱1", "實際店家名稱2"],
       "bonusRate": 加碼回饋率（數字，例如 3.0 代表 3%）,
       "spendCap": 此通路的消費上限（整數，新台幣，找不到填 0）,
-      "capPeriod": "monthly 或 period（monthly=每月重置；period=整個活動期間只算一次）"
+      "capPeriod": "monthly 或 period（monthly=每月重置；period=整個活動期間只算一次）",
+      "subCategories": [
+        { "label": "子分組標題（例如：便利商店、樂園、百貨）", "stores": ["屬於此子分組的店家名稱"] }
+      ]
     }
   ],
   "paymentMethodBonusTiers": [
@@ -207,6 +224,7 @@ export async function parseCardFromHtml(
 - validFrom / validTo：民國年需轉換為西元年（例如 115/1/1 → 2026-01-01）
 - stores：請列出頁面上該通路下明確列舉的所有實際店家名稱，例如 7-ELEVEN、FamilyMart、唐吉訶德、東京迪士尼等；若無列舉具體店家則填空陣列 []
 - capPeriod：頁面寫「每月上限」填 "monthly"；寫「活動期間上限」填 "period"；不確定填 "monthly"
+- subCategories：若頁面在同一加碼條件下，有視覺上明確的子分組標題（如「便利商店」、「樂園」、「百貨」），請以 subCategories 陣列回傳，每個物件含 label（子標題文字）與 stores（該子分組的店家列表）；stores 中的店家名稱與頂層 stores 陣列可以重複；若無明顯視覺子分組則省略 subCategories 欄位（不要輸出空陣列）
 - 一個通路若同時有多個 bonusRate（例如登錄加碼1.5%、帳單滿額加碼1%），請拆成兩個獨立項目
 - 【重要】凡是與行動支付相關的加碼（包含：Apple Pay、Google Pay、行動支付、感應支付、行動支付加碼、行動支付登錄加碼、行動支付帳單滿額加碼等），一律放入 paymentMethodBonusTiers，不得放入 storeRules；每個 tier 各為一個獨立物件
 - paymentMethodBonusTiers 中的 prerequisite：若無條件填 null；若有條件（如前月帳單滿額）請填寫說明文字
@@ -225,7 +243,12 @@ export async function parseCardFromHtml(
       "stores": ["7-ELEVEN", "FamilyMart", "LAWSON", "唐吉訶德", "東京迪士尼", "大阪環球影城"],
       "bonusRate": 3.0,
       "spendCap": 600,
-      "capPeriod": "period"
+      "capPeriod": "period",
+      "subCategories": [
+        { "label": "便利商店", "stores": ["7-ELEVEN", "FamilyMart", "LAWSON"] },
+        { "label": "購物", "stores": ["唐吉訶德"] },
+        { "label": "熱門景點", "stores": ["東京迪士尼", "大阪環球影城"] }
+      ]
     }
   ],
   "paymentMethodBonusTiers": [
