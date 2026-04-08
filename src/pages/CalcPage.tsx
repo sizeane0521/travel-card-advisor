@@ -20,13 +20,12 @@ function formatBreakdown(total: number, bd: RewardBreakdown, storeBonusLabel: st
   return `NT$${total.toLocaleString()} = ${parts.join(' + ')}`
 }
 
-export default function ExpensePage() {
+export default function CalcPage() {
   const { data, dispatch } = useStore()
   const activeTrip = data.trips.find(t => t.id === data.activeTripId) ?? null
 
   const [amount, setAmount] = useState('')
   const [store, setStore] = useState<string>('')
-  // task 1.1: selectedCardId replaces cardId
   const [selectedCardId, setSelectedCardId] = useState<string>('')
   const [storeQuery, setStoreQuery] = useState('')
   const [amountError, setAmountError] = useState('')
@@ -36,11 +35,9 @@ export default function ExpensePage() {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
 
   const storeNames = getAllStoreNames(data.cards)
-  const expenses = activeTrip ? [...activeTrip.expenses].reverse() : []
   const tripExpenses = activeTrip?.expenses ?? []
   const allExpenses = data.trips.flatMap(t => t.expenses)
 
-  // Exchange rate derived values
   const exchangeRate = activeTrip?.exchangeRate
   const parsedAmount = parseInt(amount, 10)
   const validAmount = !isNaN(parsedAmount) && parsedAmount > 0
@@ -48,8 +45,6 @@ export default function ExpensePage() {
     ? (exchangeRate ? Math.floor(parsedAmount * exchangeRate.rate) : parsedAmount)
     : 0
 
-  // task 1.1 + 1.2: recommendations re-computed on every render (store, amount, or paymentMethod change drives it)
-  // effectiveSelectedCardId: keep user selection unless it's gone or full
   const recommendations = data.cards.length > 0
     ? getSortedRecommendations(data.cards, store || null, tripExpenses, paymentMethod, undefined, prereqOverrides, allExpenses)
     : []
@@ -58,28 +53,24 @@ export default function ExpensePage() {
   const effectiveSelectedCardId = (() => {
     if (!selectedCardId) return bestCardId
     const sel = recommendations.find(a => a.card.id === selectedCardId)
-    // task 1.2: if selected card is now full, fall back to best
     if (!sel || sel.isFull) return bestCardId
     return selectedCardId
   })()
 
-  // Search-first: only show chips when user has typed something
   const filteredStores = storeQuery.length > 0
     ? storeNames.filter(n => n.toLowerCase().includes(storeQuery.toLowerCase()))
     : []
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  function handleRecordWithCard(cardId: string) {
     const parsed = parseInt(amount, 10)
     if (!parsed || parsed <= 0) {
       setAmountError('請輸入正整數金額')
       return
     }
-    if (!effectiveSelectedCardId) return
     if (!activeTrip || activeTrip.endDate) return
 
     setAmountError('')
-    const selectedCard = data.cards.find(c => c.id === effectiveSelectedCardId)!
+    const selectedCard = data.cards.find(c => c.id === cardId)!
     const storeName = store || null
 
     const twd = exchangeRate ? Math.floor(parsed * exchangeRate.rate) : parsed
@@ -87,9 +78,9 @@ export default function ExpensePage() {
       ? { currency: exchangeRate.currency, amount: parsed }
       : undefined
 
-    const selectedAdvice = recommendations.find(a => a.card.id === effectiveSelectedCardId)
+    const selectedAdvice = recommendations.find(a => a.card.id === cardId)
     const { estimatedReward, paymentMethodReward, breakdown } = calcExpenseReward(
-      selectedCard, twd, storeName, activeTrip.expenses, paymentMethod, undefined, prereqOverrides[effectiveSelectedCardId], allExpenses
+      selectedCard, twd, storeName, activeTrip.expenses, paymentMethod, undefined, prereqOverrides[cardId], allExpenses
     )
 
     dispatch({
@@ -98,7 +89,7 @@ export default function ExpensePage() {
       expense: {
         id: genId(),
         amount: twd,
-        cardId: effectiveSelectedCardId,
+        cardId,
         store: storeName,
         date: todayStr(),
         estimatedReward,
@@ -114,16 +105,10 @@ export default function ExpensePage() {
       },
     })
 
-    // task 6.1: reset amount and store, keep selectedCardId (re-ranks on next render)
     setAmount('')
     setStore('')
     setStoreQuery('')
     setPrereqOverrides({})
-  }
-
-  function handleDelete(expenseId: string) {
-    if (!activeTrip) return
-    dispatch({ type: 'DELETE_EXPENSE', tripId: activeTrip.id, expenseId })
   }
 
   if (!activeTrip) {
@@ -154,15 +139,13 @@ export default function ExpensePage() {
 
   return (
     <div className="p-4 max-w-lg mx-auto">
-      {/* task 5.1: header with trip expense count summary */}
+      {/* Header — 試算 only, no expense count */}
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-lg font-semibold text-[#f2e8c9]">記帳</h1>
-        <span className="text-sm text-[#c8a060]">本次旅程 {activeTrip.expenses.length} 筆</span>
+        <h1 className="text-lg font-semibold text-[#f2e8c9]">試算</h1>
       </div>
 
-      {/* ── Log expense form ── */}
-      <form onSubmit={handleSubmit}
-        className="beast-card rounded-xl p-4 mb-4 space-y-4"
+      {/* ── Calc form (no onSubmit) ── */}
+      <div className="beast-card rounded-xl p-4 mb-4 space-y-4"
         style={{ background: '#1a1208', border: '1px solid #3a2810' }}>
 
         {/* Amount input + JPY preview */}
@@ -178,7 +161,6 @@ export default function ExpensePage() {
             placeholder={exchangeRate ? '例：1500（日幣）' : '例：1200'}
             className="w-full border rounded-lg px-3 py-2.5 text-lg focus:outline-none"
           />
-          {/* task 4.1: real-time JPY→TWD conversion preview */}
           {exchangeRate && validAmount && (
             <p className="text-sm mt-1" style={{ color: '#c8a060' }}>
               ≈ NT${twdAmount.toLocaleString()}
@@ -191,7 +173,6 @@ export default function ExpensePage() {
         <div>
           <label className="text-xs text-[#c8a060] block mb-2 uppercase tracking-wider">店家</label>
 
-          {/* Search input */}
           <div className="relative mb-2">
             <input
               type="text"
@@ -217,9 +198,7 @@ export default function ExpensePage() {
             )}
           </div>
 
-          {/* Chips */}
           <div className="flex flex-wrap gap-2">
-            {/* 一般消費：always visible */}
             <button
               type="button"
               onClick={() => { setStore(''); setStoreQuery('') }}
@@ -246,7 +225,7 @@ export default function ExpensePage() {
             ))}
           </div>
 
-          {/* Category browser — only rendered when at least one StoreBonus has subCategories */}
+          {/* Category browser */}
           {(() => {
             const bonusesWithSubs = data.cards.flatMap(c =>
               c.storeBonus.filter(b => b.subCategories && b.subCategories.length > 0).map(b => ({ card: c, bonus: b }))
@@ -340,7 +319,7 @@ export default function ExpensePage() {
           </div>
         </div>
 
-        {/* task 2.1–2.4: inline card recommendation list */}
+        {/* Card recommendation list with per-card +記帳 button */}
         {data.cards.length > 0 && (
           <div>
             <label className="text-xs text-[#c8a060] block mb-2 uppercase tracking-wider">選擇信用卡（依回饋排序）</label>
@@ -358,7 +337,6 @@ export default function ExpensePage() {
                   ? (advice.card.operationWarnings ?? []).find(w => w.paymentMethod === paymentMethod)?.message
                   : undefined
 
-                // task 2.2: progress bar data
                 const cap = advice.card.monthlyCap.rewardLimit ?? advice.card.monthlyCap.spendLimit
                 const showBar = isTop && cap !== undefined && cap > 0
                 const barPct = showBar
@@ -374,11 +352,11 @@ export default function ExpensePage() {
                       cursor: advice.isFull ? 'default' : 'pointer',
                       background: isTop && isSelected ? '#2a1f0a' : isSelected ? '#1e1608' : '#141008',
                       border: isTop && isSelected
-                        ? '2px solid #ffcc00' // 更顯眼的主推薦卡片邊框
+                        ? '2px solid #ffcc00'
                         : isSelected
                           ? '1px solid #c8901a'
                           : '1px solid #3d2e14',
-                      boxShadow: isSelected ? '0 0 12px rgba(255,204,0,0.25)' : 'none', // 更顯眼的光暈
+                      boxShadow: isSelected ? '0 0 12px rgba(255,204,0,0.25)' : 'none',
                       opacity: advice.isFull ? 0.45 : 1,
                     }}
                   >
@@ -390,46 +368,64 @@ export default function ExpensePage() {
                         </span>
                       </div>
                     )}
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-medium text-[#f2e8c9]">{advice.card.name}</span>
-                        {advice.paymentMethodBadge && (
-                          <span className="text-xs px-2 py-0.5 rounded font-medium"
-                            style={{ background: 'rgba(74,174,226,0.15)', color: '#4aade2', border: '1px solid rgba(74,174,226,0.3)' }}>
-                            {advice.paymentMethodBadge === 'apple_pay' ? 'Apple Pay' : 'Google Pay'}
-                          </span>
-                        )}
-                        {advice.isFull && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded"
-                            style={{ background: 'rgba(139,26,26,0.3)', color: '#c0392b', border: '1px solid #5a1a1a' }}>
-                            本月已滿
-                          </span>
-                        )}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-medium text-[#f2e8c9]">{advice.card.name}</span>
+                          {advice.paymentMethodBadge && (
+                            <span className="text-xs px-2 py-0.5 rounded font-medium"
+                              style={{ background: 'rgba(74,174,226,0.15)', color: '#4aade2', border: '1px solid rgba(74,174,226,0.3)' }}>
+                              {advice.paymentMethodBadge === 'apple_pay' ? 'Apple Pay' : 'Google Pay'}
+                            </span>
+                          )}
+                          {advice.isFull && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded"
+                              style={{ background: 'rgba(139,26,26,0.3)', color: '#c0392b', border: '1px solid #5a1a1a' }}>
+                              本月已滿
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-0.5">
+                          {advice.isFull ? (
+                            <span className="text-sm" style={{ color: '#c0392b' }}>0%</span>
+                          ) : (
+                            <div>
+                              <span className="text-lg font-bold" style={{ color: '#d4a017' }}>{advice.effectiveRate}%</span>
+                              {(advice.rateBreakdown.paymentMethod > 0 || advice.rateBreakdown.store > 0) && (
+                                <p className="text-xs" style={{ color: '#c8a060' }}>
+                                  基本{advice.rateBreakdown.base}
+                                  {advice.rateBreakdown.paymentMethod > 0 && ` + ${advice.paymentMethodBadge === 'apple_pay' ? 'AP' : 'GP'}${advice.rateBreakdown.paymentMethod}`}
+                                  {advice.rateBreakdown.store > 0 && ` + 店家${advice.rateBreakdown.store}`}
+                                </p>
+                              )}
+                              {twdAmount > 0 && breakdown && (
+                                <p className="text-xs" style={{ color: '#4ade80' }}>
+                                  {formatBreakdown(estimated, breakdown, storeBonusLabel)}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="text-right shrink-0 ml-2">
-                        {advice.isFull ? (
-                          <span className="text-sm" style={{ color: '#c0392b' }}>0%</span>
-                        ) : (
-                          <div>
-                            <span className="text-lg font-bold" style={{ color: '#d4a017' }}>{advice.effectiveRate}%</span>
-                            {(advice.rateBreakdown.paymentMethod > 0 || advice.rateBreakdown.store > 0) && (
-                              <p className="text-xs" style={{ color: '#c8a060' }}>
-                                基本{advice.rateBreakdown.base}
-                                {advice.rateBreakdown.paymentMethod > 0 && ` + ${advice.paymentMethodBadge === 'apple_pay' ? 'AP' : 'GP'}${advice.rateBreakdown.paymentMethod}`}
-                                {advice.rateBreakdown.store > 0 && ` + 店家${advice.rateBreakdown.store}`}
-                              </p>
-                            )}
-                            {twdAmount > 0 && breakdown && (
-                              <p className="text-xs" style={{ color: '#4ade80' }}>
-                                {formatBreakdown(estimated, breakdown, storeBonusLabel)}
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </div>
+
+                      {/* Per-card +記帳 button */}
+                      <button
+                        type="button"
+                        disabled={advice.isFull}
+                        onClick={e => {
+                          e.stopPropagation()
+                          handleRecordWithCard(advice.card.id)
+                        }}
+                        className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all"
+                        style={advice.isFull
+                          ? { background: 'transparent', color: '#3d2e14', borderColor: '#3d2e14', cursor: 'not-allowed' }
+                          : { background: 'transparent', color: '#c8901a', borderColor: '#c8901a' }}
+                      >
+                        +記帳
+                      </button>
                     </div>
 
-                    {/* task 2.2: progress bar for top card with cap */}
+                    {/* Progress bar for top card */}
                     {showBar && (
                       <div className="mt-2">
                         <div className="rounded-full overflow-hidden h-1.5" style={{ background: '#2e2210' }}>
@@ -449,14 +445,14 @@ export default function ExpensePage() {
                       </p>
                     )}
 
-                    {/* Operation warning (e.g. QUICPay caution) */}
+                    {/* Operation warning */}
                     {opWarning && (
                       <p className="text-xs mt-1.5" style={{ color: '#f59e0b' }}>
                         ⚠️ {opWarning}
                       </p>
                     )}
 
-                    {/* Prerequisite tier toggles: shown when mobile payment selected and card has conditional tiers */}
+                    {/* Prerequisite tier toggles */}
                     {paymentMethod !== 'physical' &&
                       advice.card.paymentMethodBonus?.methods.includes(paymentMethod) &&
                       advice.card.paymentMethodBonus.tiers.some(t => t.prerequisite) && (
@@ -489,135 +485,7 @@ export default function ExpensePage() {
             </div>
           </div>
         )}
-
-        <button
-          type="submit"
-          disabled={!effectiveSelectedCardId}
-          className="w-full rounded-lg py-3 font-semibold text-sm tracking-wider transition-all active:scale-[0.98] disabled:opacity-30"
-          style={{ background: 'linear-gradient(135deg, #c8901a, #d4a017)', color: '#0d0a06' }}
-        >
-          ◆ 記錄消費
-        </button>
-      </form>
-
-      {/* ── Expense list ── */}
-      <h2 className="text-sm font-semibold text-[#d4a017] mb-2 pl-3 uppercase tracking-widest" style={{ borderLeft: '3px solid #c8901a' }}>本次旅程消費記錄</h2>
-      {expenses.length === 0 ? (
-        <p className="text-[#9a7040] text-sm text-center py-4">尚無消費記錄</p>
-      ) : (
-        <div className="space-y-2">
-          {expenses.map(e => {
-            const card = data.cards.find(c => c.id === e.cardId)
-            return (
-              <div key={e.id}
-                className="beast-card rounded-xl p-3 flex items-center justify-between"
-                style={{ background: '#1a1208', border: '1px solid #3d2e14' }}>
-                <div className="flex-1 min-w-0 mr-2">
-                  <p className="text-xs text-[#9a7040]">{e.date} · {e.store ?? '一般消費'}</p>
-                  <p className="font-medium text-[#f2e8c9]">
-                    {e.foreignAmount
-                      ? `¥${e.foreignAmount.amount.toLocaleString()} (NT$${e.amount.toLocaleString()})`
-                      : `NT$${e.amount.toLocaleString()}`}
-                  </p>
-                  <p className="text-xs text-[#c8a060]">
-                    {card?.name ?? e.cardId}
-                    {e.rewardBreakdown && (
-                      <span className="ml-1 px-1.5 py-0.5 rounded text-[10px]"
-                        style={{ background: 'rgba(212,160,23,0.12)', color: '#d4a017', border: '1px solid rgba(212,160,23,0.2)' }}>
-                        {e.rewardBreakdown.effectiveRate}%
-                      </span>
-                    )}
-                  </p>
-                  {e.rewardBreakdown && (e.rewardBreakdown.store > 0 || e.rewardBreakdown.paymentMethod > 0) ? (
-                    <p className="text-xs mt-0.5" style={{ color: '#4ade80' }}>
-                      回饋 NT${e.estimatedReward.toLocaleString()} = 基本 NT${e.rewardBreakdown.base.toLocaleString()}
-                      {e.rewardBreakdown.store > 0 && ` + ${e.store ?? ''}加碼 NT$${e.rewardBreakdown.store.toLocaleString()}`}
-                      {e.rewardBreakdown.paymentMethod > 0 && ` + 行動支付加碼 NT$${e.rewardBreakdown.paymentMethod.toLocaleString()}`}
-                    </p>
-                  ) : (
-                    <p className="text-xs mt-0.5" style={{ color: '#4ade80' }}>回饋 NT${e.estimatedReward.toLocaleString()}</p>
-                  )}
-                </div>
-                <button
-                  onClick={() => handleDelete(e.id)}
-                  className="text-xs px-3 py-1.5 rounded border transition-colors shrink-0"
-                  style={{ color: '#c0392b', borderColor: '#3a1010' }}
-                  aria-label="刪除"
-                >
-                  刪除
-                </button>
-              </div>
-            )
-          })}
-        </div>
-      )}
-
-      {/* ── Bonus status panel ── */}
-      {(() => {
-        const today = new Date().toISOString().slice(0, 7) // YYYY-MM
-        const bonusRows = data.cards.flatMap(card =>
-          card.storeBonus
-            .filter(b => b.cap > 0)
-            .map(b => {
-              const used = b.capPeriod === 'period'
-                ? allExpenses.filter(e => {
-                    if (e.cardId !== card.id) return false
-                    const matchedBonus = card.storeBonus.find(sb =>
-                      sb === b && (
-                        sb.stores.includes(e.store ?? '') ||
-                        (sb.subCategories ?? []).some(sc => sc.stores.includes(e.store ?? '')) ||
-                        sb.storeName === e.store
-                      )
-                    )
-                    if (!matchedBonus) return false
-                    if (card.validFrom && e.date < card.validFrom) return false
-                    if (card.validTo && e.date > card.validTo) return false
-                    return true
-                  }).reduce((sum, e) => sum + e.amount, 0)
-                : allExpenses.filter(e =>
-                    e.cardId === card.id &&
-                    e.date.startsWith(today) &&
-                    (b.stores.includes(e.store ?? '') ||
-                     (b.subCategories ?? []).some(sc => sc.stores.includes(e.store ?? '')) ||
-                     b.storeName === e.store)
-                  ).reduce((sum, e) => sum + e.amount, 0)
-              const pct = Math.min(100, Math.round(used / b.cap * 100))
-              const remaining = Math.max(0, b.cap - used)
-              return { card, bonus: b, used, remaining, pct }
-            })
-        )
-        if (bonusRows.length === 0) return null
-        return (
-          <div className="mt-4">
-            <h2 className="text-sm font-semibold text-[#d4a017] mb-2 pl-3 uppercase tracking-widest" style={{ borderLeft: '3px solid #c8901a' }}>加碼額度狀態</h2>
-            <div className="space-y-2">
-              {bonusRows.map(({ card, bonus, used, remaining, pct }) => (
-                <div key={`${card.id}:${bonus.storeName}`}
-                  className="beast-card rounded-xl p-3"
-                  style={{ background: '#1a1208', border: '1px solid #3d2e14' }}>
-                  <div className="flex items-center justify-between mb-1">
-                    <div>
-                      <span className="text-xs font-medium text-[#f2e8c9]">{card.name}</span>
-                      <span className="text-xs text-[#9a7040] ml-1">· {bonus.storeName}加碼</span>
-                    </div>
-                    <span className="text-xs" style={{ color: remaining === 0 ? '#c0392b' : '#c8a060' }}>
-                      NT${used.toLocaleString()} / NT${bonus.cap.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="rounded-full overflow-hidden h-1.5" style={{ background: '#2e2210' }}>
-                    <div className="h-full rounded-full transition-all"
-                      style={{ width: `${pct}%`, background: pct >= 100 ? '#c0392b' : 'linear-gradient(90deg, #c8901a, #d4a017)' }} />
-                  </div>
-                  <p className="text-[10px] mt-1" style={{ color: '#9a7040' }}>
-                    {bonus.capPeriod === 'period' ? '活動期間' : '本月'}剩餘 NT${remaining.toLocaleString()}
-                    {remaining === 0 && ' · 已達上限'}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )
-      })()}
+      </div>
     </div>
   )
 }

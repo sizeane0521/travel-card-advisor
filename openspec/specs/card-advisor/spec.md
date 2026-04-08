@@ -133,7 +133,7 @@ code:
 ---
 ### Requirement: Bonus status panel in expense entry page
 
-The expense entry page SHALL display a bonus status panel below the expense list. The panel SHALL show the current utilization status of each store bonus rule across all configured cards.
+The system SHALL display a bonus status panel in the 明細 Tab (LedgerPage), below the expense list. The panel SHALL NOT appear in the 試算 Tab (CalcPage). The panel SHALL show the current utilization status of each store bonus rule across all configured cards.
 
 For each StoreBonus with `cap > 0`, the panel SHALL display:
 - The card name and store bonus label (e.g. "聯邦吉鶴卡・熱門商店加碼")
@@ -142,6 +142,16 @@ For each StoreBonus with `cap > 0`, the panel SHALL display:
 - Whether the cap period is monthly or for the entire promotion period
 
 The panel SHALL only show store bonuses for cards that have at least one StoreBonus with `cap > 0`.
+
+#### Scenario: Panel shown in 明細 Tab
+
+- **WHEN** user navigates to the 明細 Tab and at least one card has a capped StoreBonus
+- **THEN** the bonus status panel SHALL be rendered below the expense list
+
+#### Scenario: Panel not shown in 試算 Tab
+
+- **WHEN** user is on the 試算 Tab
+- **THEN** the bonus status panel SHALL NOT be rendered (the mini progress bar on the top recommendation card is the only cap indicator in 試算)
 
 #### Scenario: Panel shows period cap status
 
@@ -160,19 +170,11 @@ The panel SHALL only show store bonuses for cards that have at least one StoreBo
 - **THEN** the bonus status panel SHALL NOT be rendered
 
 <!-- @trace
-source: reward-cap-and-display-enhance
-updated: 2026-04-07
+source: split-calc-and-ledger-tabs
+updated: 2026-04-08
 code:
   - src/pages/ExpensePage.tsx
-  - src/lib/rewardCalc.ts
--->
-
-<!-- @trace
-source: reward-cap-and-display-enhance
-updated: 2026-04-07
-code:
-  - src/lib/rewardCalc.ts
-  - src/pages/ExpensePage.tsx
-  - src/types/index.ts
-  - src/components/CardForm.tsx
+  - src/App.tsx
+  - src/pages/LedgerPage.tsx
+  - src/pages/CalcPage.tsx
 -->

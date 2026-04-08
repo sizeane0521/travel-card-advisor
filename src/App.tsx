@@ -1,12 +1,26 @@
 import { useState } from 'react'
-import ExpensePage from './pages/ExpensePage'
+import CalcPage from './pages/CalcPage'
+import LedgerPage from './pages/LedgerPage'
 import SettingsPage from './pages/SettingsPage'
 import TripsPage from './pages/TripsPage'
 import { ApiProviderContext, type ApiProvider } from './lib/apiProviderContext'
 
-type Tab = 'expense' | 'trips' | 'settings'
+type Tab = 'calc' | 'ledger' | 'trips' | 'settings'
 
 // ── SVG Icons ────────────────────────────────────────────
+const CalcIcon = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="4" y="2" width="16" height="20" rx="2"/>
+    <line x1="8" y1="6" x2="16" y2="6"/>
+    <line x1="8" y1="10" x2="10" y2="10"/>
+    <line x1="14" y1="10" x2="16" y2="10"/>
+    <line x1="8" y1="14" x2="10" y2="14"/>
+    <line x1="14" y1="14" x2="16" y2="14"/>
+    <line x1="8" y1="18" x2="10" y2="18"/>
+    <line x1="14" y1="18" x2="16" y2="18"/>
+  </svg>
+)
+
 const ScrollIcon = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -32,13 +46,14 @@ const ShieldIcon = () => (
 
 // ── Tab Config ───────────────────────────────────────────
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
-  { id: 'expense',  label: '記帳', icon: <ScrollIcon /> },
+  { id: 'calc',     label: '試算', icon: <CalcIcon /> },
+  { id: 'ledger',   label: '明細', icon: <ScrollIcon /> },
   { id: 'trips',    label: '旅程', icon: <GlobeIcon /> },
   { id: 'settings', label: '設定', icon: <ShieldIcon /> },
 ]
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>('expense')
+  const [tab, setTab] = useState<Tab>('calc')
   const [provider, setProvider] = useState<ApiProvider>('gemini')
   const [apiKey, setApiKey] = useState('')
 
@@ -46,7 +61,8 @@ export default function App() {
     <ApiProviderContext.Provider value={{ provider, apiKey, setProvider, setApiKey }}>
       <div className="flex flex-col min-h-dvh bg-transparent">
         <main className="flex-1 overflow-y-auto pb-20">
-          {tab === 'expense'  && <ExpensePage />}
+          {tab === 'calc'     && <CalcPage />}
+          {tab === 'ledger'   && <LedgerPage />}
           {tab === 'trips'    && <TripsPage />}
           {tab === 'settings' && <SettingsPage />}
         </main>
