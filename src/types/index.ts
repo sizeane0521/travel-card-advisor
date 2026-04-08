@@ -15,8 +15,10 @@ export interface StoreBonus {
   stores: string[];           // actual store names (e.g. ["唐吉訶德", "FamilyMart"])
   subCategories?: { label: string; stores: string[] }[]; // grouped store names (e.g. { label: "便利商店", stores: ["7-ELEVEN"] })
   rate: number;               // percentage, e.g. 5.0 = 5%
-  cap: number;                // spend cap in NTD for this store bonus
+  cap: number;                // reward cap in NTD for this store bonus (max reward amount, not spend)
   capPeriod: 'monthly' | 'period'; // 'monthly' resets each month; 'period' = entire promotion period
+  prerequisite?: string;      // human-readable condition (e.g. "限新戶", "需登錄")
+  prerequisiteMet?: boolean;  // user-declared; when false/absent and prerequisite exists, bonus is skipped
 }
 
 export interface MonthlyCap {

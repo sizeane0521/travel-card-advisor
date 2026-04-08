@@ -88,66 +88,104 @@ export default function LedgerPage() {
 
       {/* ── Bonus status panel ── */}
       {(() => {
-        const today = new Date().toISOString().slice(0, 7)
-        const bonusRows = data.cards.flatMap(card =>
-          card.storeBonus
-            .filter(b => b.cap > 0)
-            .map(b => {
-              const used = b.capPeriod === 'period'
-                ? allExpenses.filter(e => {
-                    if (e.cardId !== card.id) return false
-                    const matchedBonus = card.storeBonus.find(sb =>
-                      sb === b && (
-                        sb.stores.includes(e.store ?? '') ||
-                        (sb.subCategories ?? []).some(sc => sc.stores.includes(e.store ?? '')) ||
-                        sb.storeName === e.store
-                      )
-                    )
-                    if (!matchedBonus) return false
-                    if (card.validFrom && e.date < card.validFrom) return false
-                    if (card.validTo && e.date > card.validTo) return false
-                    return true
-                  }).reduce((sum, e) => sum + e.amount, 0)
-                : allExpenses.filter(e =>
-                    e.cardId === card.id &&
-                    e.date.startsWith(today) &&
-                    (b.stores.includes(e.store ?? '') ||
-                     (b.subCategories ?? []).some(sc => sc.stores.includes(e.store ?? '')) ||
-                     b.storeName === e.store)
-                  ).reduce((sum, e) => sum + e.amount, 0)
-              const pct = Math.min(100, Math.round(used / b.cap * 100))
-              const remaining = Math.max(0, b.cap - used)
-              return { card, bonus: b, used, remaining, pct }
+        const currentMonth = new Date().toISOString().slice(0, 7)
+        type BonusRow = { cardName: string; label: string; key: string; used: number; cap: number; periodLabel: string }
+        const rows: BonusRow[] = []
+
+        for (const card of data.cards) {
+          // Store bonus rows: skip unmet prerequisites, skip cap=0
+          for (const b of card.storeBonus) {
+            if (b.cap <= 0) continue
+            if (b.prerequisite !== undefined && b.prerequisiteMet !== true) continue
+            const matchesBonus = (e: typeof allExpenses[0]) =>
+              b.stores.includes(e.store ?? '') ||
+              (b.subCategories ?? []).some(sc => sc.stores.includes(e.store ?? '')) ||
+              b.storeName === e.store
+            const rewardUsed = b.capPeriod === 'period'
+              ? allExpenses.filter(e => {
+                  if (e.cardId !== card.id) return false
+                  if (!matchesBonus(e)) return false
+                  if (card.validFrom && e.date < card.validFrom) return false
+                  if (card.validTo && e.date > card.validTo) return false
+                  return true
+                }).reduce((sum, e) => sum + (e.rewardBreakdown?.store ?? 0), 0)
+              : allExpenses.filter(e =>
+                  e.cardId === card.id && e.date.startsWith(currentMonth) && matchesBonus(e)
+                ).reduce((sum, e) => sum + (e.rewardBreakdown?.store ?? 0), 0)
+            rows.push({
+              cardName: card.name,
+              label: `${b.storeName}加碼`,
+              key: `${card.id}:store:${b.storeName}`,
+              used: rewardUsed,
+              cap: b.cap,
+              periodLabel: b.capPeriod === 'period' ? '活動期間' : '本月',
             })
-        )
-        if (bonusRows.length === 0) return null
+          }
+
+          // Payment method bonus tier rows: skip unmet prerequisites, skip monthlyCap=0
+          if (card.paymentMethodBonus) {
+            for (const [tierIdx, tier] of card.paymentMethodBonus.tiers.entries()) {
+              if (tier.monthlyCap <= 0) continue
+              if (tier.prerequisite !== undefined && tier.prerequisiteMet !== true) continue
+              const tierLabel = tier.prerequisite ?? '行動支付加碼'
+              const monthlyPmReward = allExpenses
+                .filter(e => e.cardId === card.id && e.date.startsWith(currentMonth))
+                .reduce((sum, e) => sum + (e.paymentMethodReward ?? 0), 0)
+              // Distribute accrued rewards across tiers in order (same logic as calcPaymentMethodBonus)
+              let remaining = monthlyPmReward
+              let tierUsed = 0
+              for (let i = 0; i <= tierIdx; i++) {
+                const t = card.paymentMethodBonus!.tiers[i]
+                if (t.prerequisite !== undefined && t.prerequisiteMet !== true) continue
+                if (t.monthlyCap === 0) continue
+                const consumed = Math.min(remaining, t.monthlyCap)
+                remaining -= consumed
+                if (i === tierIdx) tierUsed = consumed
+              }
+              rows.push({
+                cardName: card.name,
+                label: tierLabel,
+                key: `${card.id}:pm:${tierIdx}`,
+                used: tierUsed,
+                cap: tier.monthlyCap,
+                periodLabel: '本月',
+              })
+            }
+          }
+        }
+
+        if (rows.length === 0) return null
         return (
           <div className="mt-4">
             <h2 className="text-sm font-semibold text-[#d4a017] mb-2 pl-3 uppercase tracking-widest" style={{ borderLeft: '3px solid #c8901a' }}>加碼額度狀態</h2>
             <div className="space-y-2">
-              {bonusRows.map(({ card, bonus, used, remaining, pct }) => (
-                <div key={`${card.id}:${bonus.storeName}`}
-                  className="beast-card rounded-xl p-3"
-                  style={{ background: '#1a1208', border: '1px solid #3d2e14' }}>
-                  <div className="flex items-center justify-between mb-1">
-                    <div>
-                      <span className="text-xs font-medium text-[#f2e8c9]">{card.name}</span>
-                      <span className="text-xs text-[#9a7040] ml-1">· {bonus.storeName}加碼</span>
+              {rows.map(({ cardName, label, key, used, cap, periodLabel }) => {
+                const pct = Math.min(100, Math.round(used / cap * 100))
+                const remaining = Math.max(0, cap - used)
+                return (
+                  <div key={key}
+                    className="beast-card rounded-xl p-3"
+                    style={{ background: '#1a1208', border: '1px solid #3d2e14' }}>
+                    <div className="flex items-center justify-between mb-1">
+                      <div>
+                        <span className="text-xs font-medium text-[#f2e8c9]">{cardName}</span>
+                        <span className="text-xs text-[#9a7040] ml-1">· {label}</span>
+                      </div>
+                      <span className="text-xs" style={{ color: remaining === 0 ? '#c0392b' : '#c8a060' }}>
+                        NT${used.toLocaleString()} / NT${cap.toLocaleString()}
+                      </span>
                     </div>
-                    <span className="text-xs" style={{ color: remaining === 0 ? '#c0392b' : '#c8a060' }}>
-                      NT${used.toLocaleString()} / NT${bonus.cap.toLocaleString()}
-                    </span>
+                    <div className="rounded-full overflow-hidden h-1.5" style={{ background: '#2e2210' }}>
+                      <div className="h-full rounded-full transition-all"
+                        style={{ width: `${pct}%`, background: pct >= 100 ? '#c0392b' : 'linear-gradient(90deg, #c8901a, #d4a017)' }} />
+                    </div>
+                    <p className="text-[10px] mt-1" style={{ color: '#9a7040' }}>
+                      {periodLabel}剩餘 NT${remaining.toLocaleString()}
+                      {remaining === 0 && ' · 已達上限'}
+                    </p>
                   </div>
-                  <div className="rounded-full overflow-hidden h-1.5" style={{ background: '#2e2210' }}>
-                    <div className="h-full rounded-full transition-all"
-                      style={{ width: `${pct}%`, background: pct >= 100 ? '#c0392b' : 'linear-gradient(90deg, #c8901a, #d4a017)' }} />
-                  </div>
-                  <p className="text-[10px] mt-1" style={{ color: '#9a7040' }}>
-                    {bonus.capPeriod === 'period' ? '活動期間' : '本月'}剩餘 NT${remaining.toLocaleString()}
-                    {remaining === 0 && ' · 已達上限'}
-                  </p>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         )

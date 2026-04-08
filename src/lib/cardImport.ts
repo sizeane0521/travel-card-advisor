@@ -14,6 +14,7 @@ export interface CardImportResult {
     spendCap: number
     capPeriod: 'monthly' | 'period'
     subCategories?: { label: string; stores: string[] }[]
+    prerequisite?: string
   }[]
   paymentMethodBonusTiers?: {
     rate: number
@@ -98,6 +99,7 @@ export function parseClaudeResponse(raw: string): CardImportResult | null {
           spendCap: typeof rule.spendCap === 'number' ? rule.spendCap : 0,
           capPeriod: rule.capPeriod === 'period' ? 'period' : 'monthly',
           ...(subCategories ? { subCategories } : {}),
+          ...(typeof rule.prerequisite === 'string' ? { prerequisite: rule.prerequisite } : {}),
         })
       }
     }
@@ -208,7 +210,8 @@ export async function parseCardFromHtml(
       "capPeriod": "monthly 或 period（monthly=每月重置；period=整個活動期間只算一次）",
       "subCategories": [
         { "label": "子分組標題（例如：便利商店、樂園、百貨）", "stores": ["屬於此子分組的店家名稱"] }
-      ]
+      ],
+      "prerequisite": "加碼前提條件（例如：限新戶、需登錄）或 null"
     }
   ],
   "paymentMethodBonusTiers": [
@@ -226,6 +229,7 @@ export async function parseCardFromHtml(
 - capPeriod：頁面寫「每月上限」填 "monthly"；寫「活動期間上限」填 "period"；不確定填 "monthly"
 - subCategories：若頁面在同一加碼條件下，有視覺上明確的子分組標題（如「便利商店」、「樂園」、「百貨」），請以 subCategories 陣列回傳，每個物件含 label（子標題文字）與 stores（該子分組的店家列表）；stores 中的店家名稱與頂層 stores 陣列可以重複；若無明顯視覺子分組則省略 subCategories 欄位（不要輸出空陣列）
 - 一個通路若同時有多個 bonusRate（例如登錄加碼1.5%、帳單滿額加碼1%），請拆成兩個獨立項目
+- storeRules 中的 prerequisite：若通路加碼有前提條件（如「限新戶」、「需登錄」、「限首次」），請填寫條件文字；若無條件填 null
 - 【重要】凡是與行動支付相關的加碼（包含：Apple Pay、Google Pay、行動支付、感應支付、行動支付加碼、行動支付登錄加碼、行動支付帳單滿額加碼等），一律放入 paymentMethodBonusTiers，不得放入 storeRules；每個 tier 各為一個獨立物件
 - paymentMethodBonusTiers 中的 prerequisite：若無條件填 null；若有條件（如前月帳單滿額）請填寫說明文字
 

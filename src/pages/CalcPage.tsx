@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useStore } from '../store/useStore'
 import { getAllStoreNames, getSortedRecommendations, calcExpenseReward } from '../lib/rewardCalc'
 import type { RewardBreakdown } from '../lib/rewardCalc'
@@ -33,6 +33,14 @@ export default function CalcPage() {
   const [prereqOverrides, setPrereqOverrides] = useState<Record<string, Record<number, boolean>>>({})
   const [showCategoryBrowser, setShowCategoryBrowser] = useState(false)
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
+  const [lastRecordResult, setLastRecordResult] = useState<{ text: string } | null>(null)
+  const [storeBonusOverrides, setStoreBonusOverrides] = useState<Record<string, Record<number, boolean>>>({})
+
+  useEffect(() => {
+    if (!lastRecordResult) return
+    const timer = setTimeout(() => setLastRecordResult(null), 3000)
+    return () => clearTimeout(timer)
+  }, [lastRecordResult])
 
   const storeNames = getAllStoreNames(data.cards)
   const tripExpenses = activeTrip?.expenses ?? []
@@ -45,8 +53,20 @@ export default function CalcPage() {
     ? (exchangeRate ? Math.floor(parsedAmount * exchangeRate.rate) : parsedAmount)
     : 0
 
-  const recommendations = data.cards.length > 0
-    ? getSortedRecommendations(data.cards, store || null, tripExpenses, paymentMethod, undefined, prereqOverrides, allExpenses)
+  // Apply store bonus prerequisite overrides to card copies
+  const cardsWithOverrides = data.cards.map(card => {
+    const overrides = storeBonusOverrides[card.id]
+    if (!overrides) return card
+    return {
+      ...card,
+      storeBonus: card.storeBonus.map((b, i) =>
+        i in overrides ? { ...b, prerequisiteMet: overrides[i] } : b
+      ),
+    }
+  })
+
+  const recommendations = cardsWithOverrides.length > 0
+    ? getSortedRecommendations(cardsWithOverrides, store || null, tripExpenses, paymentMethod, undefined, prereqOverrides, allExpenses)
     : []
 
   const bestCardId = recommendations.find(a => !a.isFull)?.card.id ?? ''
@@ -70,7 +90,7 @@ export default function CalcPage() {
     if (!activeTrip || activeTrip.endDate) return
 
     setAmountError('')
-    const selectedCard = data.cards.find(c => c.id === cardId)!
+    const selectedCard = cardsWithOverrides.find(c => c.id === cardId)!
     const storeName = store || null
 
     const twd = exchangeRate ? Math.floor(parsed * exchangeRate.rate) : parsed
@@ -105,10 +125,13 @@ export default function CalcPage() {
       },
     })
 
+    const storeBonusLabel = store || '店家'
+    const toastText = `已記帳！回饋 ${formatBreakdown(estimatedReward, breakdown, storeBonusLabel)}`
+    setLastRecordResult({ text: toastText })
+
     setAmount('')
     setStore('')
     setStoreQuery('')
-    setPrereqOverrides({})
   }
 
   if (!activeTrip) {
@@ -139,6 +162,14 @@ export default function CalcPage() {
 
   return (
     <div className="p-4 max-w-lg mx-auto">
+      {/* Toast notification */}
+      {lastRecordResult && (
+        <div className="mb-3 rounded-xl px-4 py-3 text-sm font-medium animate-pulse"
+          style={{ background: 'rgba(74,222,128,0.12)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.3)' }}>
+          {lastRecordResult.text}
+        </div>
+      )}
+
       {/* Header — 試算 only, no expense count */}
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-lg font-semibold text-[#f2e8c9]">試算</h1>
@@ -452,7 +483,7 @@ export default function CalcPage() {
                       </p>
                     )}
 
-                    {/* Prerequisite tier toggles */}
+                    {/* Prerequisite tier toggles (payment method) */}
                     {paymentMethod !== 'physical' &&
                       advice.card.paymentMethodBonus?.methods.includes(paymentMethod) &&
                       advice.card.paymentMethodBonus.tiers.some(t => t.prerequisite) && (
@@ -474,6 +505,32 @@ export default function CalcPage() {
                                 : { background: 'transparent', color: '#9a7040', borderColor: '#3d2e14' }}
                             >
                               {isEnabled ? '✓' : '+'} {tier.prerequisite} (+{tier.rate}%)
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+
+                    {/* Prerequisite toggles (store bonus) */}
+                    {advice.card.storeBonus.some(b => b.prerequisite) && (
+                      <div className="mt-2 flex flex-wrap gap-1.5" onClick={e => e.stopPropagation()}>
+                        {advice.card.storeBonus.map((b, bIdx) => {
+                          if (!b.prerequisite) return null
+                          const isEnabled = storeBonusOverrides[advice.card.id]?.[bIdx] === true
+                          return (
+                            <button
+                              key={`sb-${bIdx}`}
+                              type="button"
+                              onClick={() => setStoreBonusOverrides(prev => ({
+                                ...prev,
+                                [advice.card.id]: { ...(prev[advice.card.id] ?? {}), [bIdx]: !isEnabled },
+                              }))}
+                              className="text-xs px-2 py-1 rounded-lg border transition-all"
+                              style={isEnabled
+                                ? { background: 'rgba(212,160,23,0.2)', color: '#d4a017', borderColor: '#d4a017' }
+                                : { background: 'transparent', color: '#9a7040', borderColor: '#3d2e14' }}
+                            >
+                              {isEnabled ? '✓' : '+'} {b.prerequisite} (+{b.rate}%)
                             </button>
                           )
                         })}

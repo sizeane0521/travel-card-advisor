@@ -49,21 +49,25 @@ export interface CardAdvice {
     store: number;
   };
   // Exposes matched store bonus info for proportional truncation in calcExpenseReward
-  storeBonusInfo?: { bonus: StoreBonus; storeSpend: number } | null;
+  storeBonusInfo?: { bonus: StoreBonus; storeRewardUsed: number } | null;
 }
 
 /**
  * task 5.2: Find matching StoreBonus for a store name.
  * First tries exact match on storeName, then searches stores[] arrays.
  */
-function findStoreBonus(card: Card, storeName: string): StoreBonus | null {
+function findStoreBonus(card: Card, storeName: string, skipPrereq = true): StoreBonus | null {
+  const isEligible = (b: StoreBonus) =>
+    !skipPrereq || b.prerequisite === undefined || b.prerequisiteMet === true;
   // Exact category name match
-  const byCategory = card.storeBonus.find(b => b.storeName === storeName);
+  const byCategory = card.storeBonus.find(b => b.storeName === storeName && isEligible(b));
   if (byCategory) return byCategory;
   // Search actual store names in stores[] and subCategories[].stores arrays
   return card.storeBonus.find(b =>
-    (b.stores ?? []).includes(storeName) ||
-    (b.subCategories ?? []).some(sub => sub.stores.includes(storeName))
+    isEligible(b) && (
+      (b.stores ?? []).includes(storeName) ||
+      (b.subCategories ?? []).some(sub => sub.stores.includes(storeName))
+    )
   ) ?? null;
 }
 
@@ -180,37 +184,37 @@ export function calcCardAdvice(
   if (!spendCapReached && storeName) {
     const bonus = findStoreBonus(card, storeName);
     if (bonus) {
-      // period cap: cross-trip accumulation within card.validFrom–validTo; monthly cap: current month only
-      const storeSpend = bonus.capPeriod === 'period'
+      // Accumulate reward used (not spend) for store bonus cap tracking
+      const storeRewardUsed = bonus.capPeriod === 'period'
         ? (allExpenses ?? tripExpenses)
             .filter(e => {
               if (e.cardId !== card.id) return false;
-              if (findStoreBonus(card, e.store ?? '') !== bonus) return false;
+              if (findStoreBonus(card, e.store ?? '', false) !== bonus) return false;
               if (card.validFrom && e.date < card.validFrom) return false;
               if (card.validTo && e.date > card.validTo) return false;
               return true;
             })
-            .reduce((sum, e) => sum + e.amount, 0)
+            .reduce((sum, e) => sum + (e.rewardBreakdown?.store ?? 0), 0)
         : tripExpenses
-            .filter(e => e.cardId === card.id && e.store === storeName && e.date.startsWith(month))
-            .reduce((sum, e) => sum + e.amount, 0);
+            .filter(e => e.cardId === card.id && findStoreBonus(card, e.store ?? '', false) === bonus && e.date.startsWith(month))
+            .reduce((sum, e) => sum + (e.rewardBreakdown?.store ?? 0), 0);
 
-      const remainingCap = bonus.cap === 0 ? Infinity : Math.max(0, bonus.cap - storeSpend);
+      const remainingCap = bonus.cap === 0 ? Infinity : Math.max(0, bonus.cap - storeRewardUsed);
 
       if (remainingCap > 0) {
         applicableRate += bonus.rate;
         storeAppliedRate = bonus.rate;
         // Expose bonus info for proportional reward calculation in calcExpenseReward
-        storeBonusInfo = { bonus, storeSpend };
+        storeBonusInfo = { bonus, storeRewardUsed };
       }
 
       if (bonus.cap > 0) {
         caps.push({
           type: 'store_bonus',
           label: `${bonus.storeName} 加碼`,
-          current: storeSpend,
+          current: storeRewardUsed,
           total: bonus.cap,
-          percentage: (storeSpend / bonus.cap) * 100,
+          percentage: (storeRewardUsed / bonus.cap) * 100,
         });
       }
     }
@@ -296,15 +300,15 @@ export function calcExpenseReward(
   let storeCapRemaining = 0;
 
   if (advice.storeBonusInfo) {
-    const { bonus, storeSpend } = advice.storeBonusInfo;
+    const { bonus, storeRewardUsed } = advice.storeBonusInfo;
     if (bonus.cap === 0) {
       // Unlimited store bonus
       storeBonusReward = Math.floor(amount * bonus.rate / 100);
     } else {
-      const remainingSpendCap = Math.max(0, bonus.cap - storeSpend);
-      const eligibleAmount = Math.min(amount, remainingSpendCap);
-      storeBonusReward = Math.floor(eligibleAmount * bonus.rate / 100);
-      storeCapped = amount > remainingSpendCap;
+      const remainingRewardCap = Math.max(0, bonus.cap - storeRewardUsed);
+      const uncappedReward = Math.floor(amount * bonus.rate / 100);
+      storeBonusReward = Math.min(uncappedReward, remainingRewardCap);
+      storeCapped = uncappedReward > remainingRewardCap;
       storeCapRemaining = storeCapped ? storeBonusReward : 0;
     }
   }

@@ -226,6 +226,7 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
         rate: r.bonusRate,
         cap: r.spendCap,
         capPeriod: r.capPeriod,
+        ...(r.prerequisite ? { prerequisite: r.prerequisite, prerequisiteMet: false } : {}),
       })))
     }
     if (result.paymentMethodBonusTiers && result.paymentMethodBonusTiers.length > 0) {
@@ -597,6 +598,29 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
                       新增分類
                     </button>
                   </div>
+                </div>
+              )}
+
+              {/* Prerequisite toggle for store bonus */}
+              {b.prerequisite && (
+                <div className="mt-2 space-y-1">
+                  <p className="text-xs" style={{ color: '#9a7040' }}>條件：{b.prerequisite}</p>
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={b.prerequisiteMet ?? false}
+                      onChange={() => setBonuses(prev => prev.map((bb, bi) =>
+                        bi === i ? { ...bb, prerequisiteMet: !bb.prerequisiteMet } : bb
+                      ))}
+                      className="mt-0.5"
+                    />
+                    <span>
+                      <span className="text-xs text-[#c8a060]">我目前符合此條件</span>
+                      <span className="block text-xs mt-0.5" style={{ color: '#9a5020' }}>
+                        未勾選時此加碼不會計入回饋
+                      </span>
+                    </span>
+                  </label>
                 </div>
               )}
             </div>
