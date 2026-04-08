@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useStore } from '../store/useStore'
 import { getAllStoreNames, getSortedRecommendations, calcExpenseReward } from '../lib/rewardCalc'
-import type { CardAdvice, RewardBreakdown } from '../lib/rewardCalc'
+import type { RewardBreakdown } from '../lib/rewardCalc'
 
 function todayStr(): string {
   return new Date().toISOString().slice(0, 10)
