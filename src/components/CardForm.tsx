@@ -486,11 +486,23 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
           <h3 className="text-sm font-semibold text-[#d4a017] mb-3 pl-3 uppercase tracking-widest"
             style={{ borderLeft: '3px solid #c8901a' }}>特定店家加碼</h3>
 
+          <div className="space-y-2">
           {bonuses.map((b, i) => (
-            <div key={i} className="mb-3 pb-3" style={{ borderBottom: '1px solid #3d2e14' }}>
+            <div key={i} className="rounded-xl p-3"
+              style={{
+                background: '#141008',
+                border: '1px solid #3d2e14',
+                ...(b.prerequisite ? { borderLeft: '3px solid #f59e0b' } : {}),
+              }}>
               <div className="flex items-start justify-between">
                 <div className="text-sm flex-1 min-w-0">
                   <span className="font-medium text-[#f2e8c9]">{b.storeName}</span>
+                  {b.prerequisite && (
+                    <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded"
+                      style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)' }}>
+                      {b.prerequisite}
+                    </span>
+                  )}
                   <span className="text-[#c8a060] ml-2">
                     {b.rate}% · 上限 NT${b.cap.toLocaleString()}
                     <span className="ml-1 text-xs px-1.5 py-0.5 rounded"
@@ -512,19 +524,22 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
                     </div>
                   )}
                 </div>
-                <div className="flex gap-2 ml-2 shrink-0">
+                <div className="flex gap-1.5 ml-2 shrink-0">
                   <button type="button"
                     onClick={() => { setExpandedAliasIdx(expandedAliasIdx === i ? null : i); setNewAliasInput('') }}
-                    className="text-xs transition-colors" style={{ color: '#c8901a' }}>
+                    className="text-xs px-2 py-1 rounded-lg border transition-colors"
+                    style={{ color: '#c8a060', borderColor: '#4a3418' }}>
                     {expandedAliasIdx === i ? '收起' : '＋店家'}
                   </button>
                   <button type="button"
                     onClick={() => { setExpandedSubCatIdx(expandedSubCatIdx === i ? null : i); setNewSubCatLabel('') }}
-                    className="text-xs transition-colors" style={{ color: '#7aade2' }}>
+                    className="text-xs px-2 py-1 rounded-lg border transition-colors"
+                    style={{ color: '#c8a060', borderColor: '#4a3418' }}>
                     {expandedSubCatIdx === i ? '收起' : '＋分類'}
                   </button>
                   <button type="button" onClick={() => removeBonus(i)}
-                    className="text-xs transition-colors" style={{ color: '#8b1a1a' }}>刪除</button>
+                    className="text-xs px-2 py-1 rounded-lg border transition-colors"
+                    style={{ color: '#c0392b', borderColor: '#5a1a1a' }}>刪除</button>
                 </div>
               </div>
 
@@ -536,26 +551,26 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
                     onChange={e => setNewAliasInput(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addAlias(i) } }}
                     placeholder="輸入實際店家名稱"
-                    className="flex-1 border rounded-lg px-2 py-1 text-xs focus:outline-none"
+                    className="flex-1 min-w-0 border rounded-lg px-2 py-1 text-xs focus:outline-none"
                   />
                   <button type="button" onClick={() => addAlias(i)}
-                    className="text-xs px-2 py-1 rounded transition-colors"
+                    className="text-xs px-2 py-1 rounded-lg transition-colors"
                     style={{ background: '#3d2e14', color: '#b89444', border: '1px solid #3a2810' }}>
                     加入
                   </button>
                 </div>
               )}
 
-              {/* Sub-category management */}
+              {/* Sub-category management — flat layout */}
               {expandedSubCatIdx === i && (
                 <div className="mt-2 space-y-2">
-                  {/* Existing sub-categories */}
                   {(b.subCategories ?? []).map((sub, si) => (
-                    <div key={si} className="rounded-lg p-2" style={{ background: '#0e0c06', border: '1px solid #3d2e14' }}>
+                    <div key={si}>
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-medium" style={{ color: '#d4a017' }}>{sub.label}</span>
+                        <span className="text-[10px] uppercase tracking-wider" style={{ color: '#9a7040' }}>{sub.label}</span>
                         <button type="button" onClick={() => removeSubCategory(i, si)}
-                          className="text-[10px]" style={{ color: '#8b1a1a' }}>刪除分類</button>
+                          className="text-[10px] px-1.5 py-0.5 rounded border transition-colors"
+                          style={{ color: '#c0392b', borderColor: '#5a1a1a' }}>刪除</button>
                       </div>
                       <div className="flex flex-wrap gap-1 mb-1">
                         {sub.stores.map(s => (
@@ -573,28 +588,28 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
                           onChange={e => setNewSubCatStores(prev => ({ ...prev, [si]: e.target.value }))}
                           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSubCatStore(i, si) } }}
                           placeholder="新增店家"
-                          className="flex-1 border rounded px-2 py-0.5 text-xs focus:outline-none"
+                          className="flex-1 min-w-0 border rounded px-2 py-0.5 text-xs focus:outline-none"
                         />
                         <button type="button" onClick={() => addSubCatStore(i, si)}
-                          className="text-xs px-2 py-0.5 rounded"
-                          style={{ background: '#1e2a3a', color: '#4aade2', border: '1px solid rgba(74,174,226,0.3)' }}>
+                          className="text-xs px-2 py-0.5 rounded-lg border"
+                          style={{ color: '#4aade2', borderColor: 'rgba(74,174,226,0.3)' }}>
                           加入
                         </button>
                       </div>
                     </div>
                   ))}
-                  {/* New sub-category form */}
+                  {/* New sub-category form — same level as groups */}
                   <div className="flex gap-2">
                     <input
                       value={newSubCatLabel}
                       onChange={e => setNewSubCatLabel(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSubCategory(i) } }}
                       placeholder="分類名稱（例：便利商店）"
-                      className="flex-1 border rounded-lg px-2 py-1 text-xs focus:outline-none"
+                      className="flex-1 min-w-0 border rounded-lg px-2 py-1 text-xs focus:outline-none"
                     />
                     <button type="button" onClick={() => addSubCategory(i)}
-                      className="text-xs px-2 py-1 rounded transition-colors"
-                      style={{ background: '#1e2a3a', color: '#4aade2', border: '1px solid rgba(74,174,226,0.3)' }}>
+                      className="text-xs px-2 py-1 rounded-lg border transition-colors"
+                      style={{ color: '#4aade2', borderColor: 'rgba(74,174,226,0.3)' }}>
                       新增分類
                     </button>
                   </div>
@@ -604,7 +619,6 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
               {/* Prerequisite toggle for store bonus */}
               {b.prerequisite && (
                 <div className="mt-2 space-y-1">
-                  <p className="text-xs" style={{ color: '#9a7040' }}>條件：{b.prerequisite}</p>
                   <label className="flex items-start gap-2 cursor-pointer">
                     <input
                       type="checkbox"
@@ -625,9 +639,11 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
               )}
             </div>
           ))}
+          </div>
 
-          {/* New bonus form */}
-          <div className="mt-2 space-y-2">
+          {/* New bonus form — visually separated */}
+          <div className="mt-3 pt-3 space-y-2" style={{ borderTop: '1px dashed #3d2e14' }}>
+            <p className="text-[10px] uppercase tracking-wider" style={{ color: '#9a7040' }}>新增加碼</p>
             <input
               value={newBonusStore}
               onChange={e => setNewBonusStore(e.target.value)}
@@ -636,13 +652,12 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
             />
             <div className="flex gap-2">
               <input value={newBonusRate} onChange={e => setNewBonusRate(e.target.value)}
-                type="number" step="0.1" min="0" placeholder="加碼 %"
-                className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none" />
+                type="number" step="0.1" min="0" placeholder="加碼%"
+                className="flex-1 min-w-0 border rounded-lg px-3 py-2 text-sm focus:outline-none" />
               <input value={newBonusCap} onChange={e => setNewBonusCap(e.target.value)}
-                type="number" min="0" placeholder="上限 NT$"
-                className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none" />
+                type="number" min="0" placeholder="上限$"
+                className="flex-1 min-w-0 border rounded-lg px-3 py-2 text-sm focus:outline-none" />
             </div>
-            {/* task 4.1: capPeriod selector */}
             <div className="flex gap-2">
               <button type="button"
                 onClick={() => setNewBonusCapPeriod('monthly')}
