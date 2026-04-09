@@ -91,6 +91,26 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
   const [showAddStoreForm, setShowAddStoreForm] = useState(false)
   const [showAddNubForm, setShowAddNubForm] = useState(false)
 
+  // Section focus state for active border highlight
+  const [focusedSection, setFocusedSection] = useState<string | null>(null)
+
+  function sectionStyle(id: string) {
+    const isActive = focusedSection === id
+    return {
+      background: '#1a1208',
+      border: `1px solid ${isActive ? '#c8901a' : '#4a3418'}`,
+      boxShadow: isActive ? '0 0 0 2px rgba(200,144,26,0.15)' : 'none',
+      transition: 'border-color 0.15s, box-shadow 0.15s',
+    }
+  }
+
+  function handleSectionFocus(id: string) { setFocusedSection(id) }
+  function handleSectionBlur(e: React.FocusEvent<HTMLDivElement>, id: string) {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setFocusedSection(prev => prev === id ? null : prev)
+    }
+  }
+
   // Import panel state
   const [showImportPanel, setShowImportPanel] = useState(false)
   const [importUrl, setImportUrl] = useState('')
@@ -924,7 +944,9 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* ── Basic info ── */}
-        <div className="beast-card rounded-xl p-4 space-y-3" style={panelStyle}>
+        <div className="beast-card rounded-xl p-4 space-y-3" style={sectionStyle('basic')}
+          onFocus={() => handleSectionFocus('basic')}
+          onBlur={e => handleSectionBlur(e, 'basic')}>
           <div>
             <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">卡片名稱</label>
             <input value={name} onChange={e => handleNameChange(e.target.value)}
@@ -985,7 +1007,9 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
         </div>
 
         {/* ── New user bonus section ── */}
-        <div className="beast-card rounded-xl p-4" style={panelStyle}>
+        <div className="beast-card rounded-xl p-4" style={sectionStyle('nub')}
+          onFocus={() => handleSectionFocus('nub')}
+          onBlur={e => handleSectionBlur(e, 'nub')}>
           <h3 className="text-sm font-semibold text-[#f59e0b] mb-3 pl-3 uppercase tracking-widest"
             style={{ borderLeft: '3px solid #f59e0b' }}>新戶加碼</h3>
           <div className="space-y-2">{renderBonusList('nub')}</div>
@@ -993,7 +1017,9 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
         </div>
 
         {/* ── Store bonus section ── */}
-        <div className="beast-card rounded-xl p-4" style={panelStyle}>
+        <div className="beast-card rounded-xl p-4" style={sectionStyle('store')}
+          onFocus={() => handleSectionFocus('store')}
+          onBlur={e => handleSectionBlur(e, 'store')}>
           <h3 className="text-sm font-semibold text-[#d4a017] mb-3 pl-3 uppercase tracking-widest"
             style={{ borderLeft: '3px solid #c8901a' }}>特定店家加碼</h3>
           <div className="space-y-2">{renderBonusList('store')}</div>
@@ -1001,7 +1027,9 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
         </div>
 
         {/* ── Payment method bonus ── */}
-        <div className="beast-card rounded-xl p-4" style={panelStyle}>
+        <div className="beast-card rounded-xl p-4" style={sectionStyle('payment')}
+          onFocus={() => handleSectionFocus('payment')}
+          onBlur={e => handleSectionBlur(e, 'payment')}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-[#d4a017] pl-3 uppercase tracking-widest"
               style={{ borderLeft: '3px solid #c8901a' }}>行動支付加碼</h3>
