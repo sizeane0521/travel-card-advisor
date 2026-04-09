@@ -305,7 +305,7 @@ code:
 ---
 ### Requirement: Store bonus action buttons consistent styling
 
-The action buttons within each StoreBonus entry in CardForm ("＋店家", "＋分類", "刪除") SHALL use bordered pill/chip styling consistent with the app's toggle button pattern, rather than plain text link styling.
+The action buttons within each StoreBonus entry in CardForm ("＋分類", "刪除") SHALL use bordered pill/chip styling consistent with the app's toggle button pattern.
 
 Each button SHALL have:
 - A visible border (`border: '1px solid ...'`)
@@ -313,18 +313,137 @@ Each button SHALL have:
 - Padding (`px-2 py-1`)
 - Text size `text-xs`
 
-The "＋店家" and "＋分類" buttons SHALL use the inactive toggle style (`color: '#c8a060', borderColor: '#4a3418'`). The "刪除" button SHALL use the delete style (`color: '#c0392b', borderColor: '#5a1a1a'`).
+The "＋分類" button SHALL use the inactive toggle style (`color: '#c8a060', borderColor: '#4a3418'`). The "刪除" button SHALL use the delete style (`color: '#c0392b', borderColor: '#5a1a1a'`).
 
-#### Scenario: Action buttons render as chips
+The "＋店家" button SHALL NOT be present at the StoreBonus header level. Store management SHALL be performed within each group's inline editor.
+
+#### Scenario: Action buttons render as chips without +店家
 
 - **WHEN** a StoreBonus entry is displayed in CardForm
-- **THEN** the "＋店家", "＋分類", and "刪除" buttons SHALL each have a visible border and rounded corners
-- **THEN** the buttons SHALL NOT be rendered as plain text links without borders
+- **THEN** the "＋分類" and "刪除" buttons SHALL each have a visible border and rounded corners
+- **THEN** a "＋店家" button SHALL NOT appear in the bonus card header
 
 
 <!-- @trace
-source: cardform-bonus-ui-overhaul
-updated: 2026-04-08
+source: bonus-card-store-management-redesign
+updated: 2026-04-09
+code:
+  - src/components/CardForm.tsx
+-->
+
+---
+### Requirement: Collapsed subcategory display in bonus card panel
+
+When a StoreBonus entry in CardForm is not in edit mode, the bonus card panel SHALL display its store groups in a collapsed read-only view. The display SHALL reflect the group structure:
+
+- If `subCategories` is non-empty: render each sub-category as a labeled group (group label + store chips)
+- If `subCategories` is absent or empty: render a single default group labeled "適用店家" showing the flat `stores[]` chips
+
+Each group row SHALL show:
+- A group label in `text-[10px] uppercase tracking-wider` style on the left
+- An `[編輯]` button on the right, triggering per-group inline edit mode for that group
+- Store chips displayed below the label row
+- Groups separated by `mt-1.5` spacing
+
+#### Scenario: StoreBonus with subCategories shows labeled groups collapsed
+
+- **WHEN** a StoreBonus has `subCategories: [{ label: "便利商店", stores: ["7-ELEVEN"] }, { label: "百貨", stores: ["高島屋"] }]`
+- **THEN** the collapsed panel SHALL show two labeled group rows: "便利商店" and "百貨"
+- **THEN** each group SHALL show its store chips and an `[編輯]` button
+
+#### Scenario: StoreBonus without subCategories shows default group collapsed
+
+- **WHEN** a StoreBonus has no `subCategories` and `stores: ["唐吉訶德", "FamilyMart"]`
+- **THEN** the collapsed panel SHALL show a single "適用店家" group row with those store chips and an `[編輯]` button
+
+<!-- @trace
+source: bonus-card-store-management-redesign
+updated: 2026-04-09
+code:
+  - src/components/CardForm.tsx
+-->
+
+
+<!-- @trace
+source: bonus-card-store-management-redesign
+updated: 2026-04-09
+code:
+  - src/components/CardForm.tsx
+-->
+
+---
+### Requirement: Per-group inline store editing in bonus card panel
+
+Each store group in a StoreBonus card panel SHALL support per-group inline editing, triggered by the `[編輯]` button on that group row. Only one group editor may be open at a time; opening a new group editor SHALL close any previously open one.
+
+When a group editor is open, it SHALL display inline below the group label row:
+- For named sub-categories: an editable label `<input>` for renaming the sub-category; changes SHALL be applied immediately via `renameSubCategory()`
+- For the default "適用店家" group: no label input (label is fixed)
+- A store name `<input>` and `[加入]` button (also triggered by Enter key); submitting SHALL call `addStoreToGroup()`
+- The current store chips, each with an `×` button that calls `removeStoreFromGroup()`
+- For named sub-categories: a `[刪除此分類]` button in red at the bottom, calling `deleteSubCategory()`; default group SHALL NOT show this button
+- A `[完成]` button to close the editor (`setExpandedGroupKey(null)`)
+
+#### Scenario: Edit a named sub-category inline
+
+- **WHEN** user clicks `[編輯]` on the "便利商店" group row
+- **THEN** an inline editor SHALL expand below the group label row showing: label rename input pre-filled with "便利商店", store name input, existing store chips with × buttons, `[刪除此分類]` button, and `[完成]` button
+
+#### Scenario: Edit the default group inline
+
+- **WHEN** user clicks `[編輯]` on the "適用店家" default group row
+- **THEN** an inline editor SHALL expand showing: store name input, existing store chips with × buttons, and `[完成]` button
+- **THEN** NO label input and NO `[刪除此分類]` button SHALL be rendered
+
+#### Scenario: Only one group editor open at a time
+
+- **WHEN** user opens the editor for group A, then clicks `[編輯]` on group B
+- **THEN** group A's editor SHALL collapse
+- **THEN** group B's editor SHALL expand
+
+<!-- @trace
+source: bonus-card-store-management-redesign
+updated: 2026-04-09
+code:
+  - src/components/CardForm.tsx
+-->
+
+
+<!-- @trace
+source: bonus-card-store-management-redesign
+updated: 2026-04-09
+code:
+  - src/components/CardForm.tsx
+-->
+
+---
+### Requirement: Rate/cap inline edit row fit on narrow screen
+
+The rate and cap inline edit row within each StoreBonus card panel in CardForm SHALL fit on a single line without wrapping on viewports as narrow as 375px.
+
+The row SHALL:
+- NOT use `flex-wrap`
+- Use a fixed width of `44px` for the rate `<input>` and the cap `<input>`
+- Render `%` immediately after the rate input and `NT$` immediately before the cap input as inline labels, rather than as a combined placeholder
+- Shorten the period badge to `每月` (monthly) or `期間` (period) to reduce text overflow
+
+#### Scenario: Rate/cap row does not wrap at 375px
+
+- **WHEN** a StoreBonus entry is displayed in CardForm on a 375px wide viewport
+- **THEN** the rate input, `%`, cap label `NT$`, cap input, and period badge SHALL all appear on a single line
+- **THEN** no line wrapping SHALL occur within the rate/cap row
+
+<!-- @trace
+source: bonus-card-store-management-redesign
+updated: 2026-04-09
+code:
+  - src/components/CardForm.tsx
+-->
+
+
+<!-- @trace
+source: bonus-card-store-management-redesign
+updated: 2026-04-09
 code:
   - src/components/CardForm.tsx
 -->
