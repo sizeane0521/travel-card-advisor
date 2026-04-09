@@ -87,6 +87,10 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
   const [newTierPrereq, setNewTierPrereq] = useState('')
   const [newTierPrereqMet, setNewTierPrereqMet] = useState(false)
 
+  // Add bonus form visibility state
+  const [showAddStoreForm, setShowAddStoreForm] = useState(false)
+  const [showAddNubForm, setShowAddNubForm] = useState(false)
+
   // Import panel state
   const [showImportPanel, setShowImportPanel] = useState(false)
   const [importUrl, setImportUrl] = useState('')
@@ -179,7 +183,6 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
       rate: parseFloat(rate),
       cap: parseInt(cap, 10),
       capPeriod: period,
-      ...(type === 'nub' ? { prerequisite: '限新戶', prerequisiteMet: false } : {}),
     }
     setList(type, prev => [...prev, entry])
     if (type === 'store') { setNewBonusStore(''); setNewBonusRate(''); setNewBonusCap(''); setNewBonusCapPeriod('monthly') }
@@ -353,8 +356,7 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
         rate: r.bonusRate,
         cap: r.spendCap,
         capPeriod: r.capPeriod,
-        prerequisite: '限新戶',
-        prerequisiteMet: false,
+        ...(r.prerequisite ? { prerequisite: r.prerequisite, prerequisiteMet: false } : {}),
       })))
     }
     if (result.paymentMethodBonusTiers && result.paymentMethodBonusTiers.length > 0) {
@@ -368,6 +370,7 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
       })))
     }
     setMissingFields(missing)
+    if (!bankUrl && importUrl.trim()) setBankUrl(importUrl.trim())
     setShowImportPanel(false)
     setShowHtmlFallback(false)
     setImportUrl('')
@@ -705,6 +708,21 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
   }
 
   function renderAddBonusForm(type: 'store' | 'nub') {
+    const showForm = type === 'store' ? showAddStoreForm : showAddNubForm
+    const setShowForm = type === 'store' ? setShowAddStoreForm : setShowAddNubForm
+
+    if (!showForm) {
+      return (
+        <div className="mt-3 pt-3" style={{ borderTop: '1px dashed #3d2e14' }}>
+          <button type="button" onClick={() => setShowForm(true)}
+            className="w-full text-xs py-1.5 rounded-lg border transition-colors"
+            style={{ borderColor: '#4a3418', color: '#c8a060', background: 'transparent' }}>
+            ＋ {type === 'store' ? '新增加碼' : '新增新戶加碼'}
+          </button>
+        </div>
+      )
+    }
+
     const [store, rate, cap, period] = type === 'store'
       ? [newBonusStore, newBonusRate, newBonusCap, newBonusCapPeriod]
       : [newNubBonusStore, newNubBonusRate, newNubBonusCap, newNubBonusCapPeriod]
@@ -717,9 +735,6 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
 
     return (
       <div className="mt-3 pt-3 space-y-2" style={{ borderTop: '1px dashed #3d2e14' }}>
-        <p className="text-[10px] uppercase tracking-wider" style={{ color: '#9a7040' }}>
-          {type === 'store' ? '新增加碼' : '新增新戶加碼'}
-        </p>
         <input
           value={store}
           onChange={e => setStore(e.target.value)}
@@ -749,26 +764,31 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
               : { background: 'transparent', color: '#c8a060', borderColor: '#3a2810' }}>
             活動期間
           </button>
-          <button type="button" onClick={() => addBonus(type)}
+          <button type="button" onClick={() => { addBonus(type); setShowForm(false) }}
             className="text-sm px-3 py-1.5 rounded transition-colors"
             style={{ background: '#3d2e14', color: '#b89444', border: '1px solid #3a2810' }}>
             新增
           </button>
         </div>
+        <button type="button" onClick={() => setShowForm(false)}
+          className="text-xs w-full text-center transition-colors"
+          style={{ color: '#6a5030' }}>
+          取消
+        </button>
       </div>
     )
   }
 
   return (
     <div className="p-4 max-w-lg mx-auto">
-      <div className="flex items-center gap-3 mb-4">
+      <div className="relative flex items-center mb-4">
         <button onClick={onCancel}
           className="text-sm transition-colors flex items-center gap-1"
           style={{ color: '#c8901a' }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
           返回
         </button>
-        <h1 className="text-lg font-semibold text-[#f2e8c9]">{card ? '編輯卡片' : '新增卡片'}</h1>
+        <h1 className="absolute left-1/2 -translate-x-1/2 text-lg font-semibold text-[#f2e8c9]">{card ? '編輯卡片' : '新增卡片'}</h1>
       </div>
 
       {/* ── Import panel ── */}
@@ -923,6 +943,13 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
             <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">銀行活動頁面連結（選填）</label>
             <input value={bankUrl} onChange={e => setBankUrl(e.target.value)}
               placeholder="https://..." type="url" className={inputClass} />
+            {bankUrl && (
+              <a href={bankUrl} target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs mt-1.5 transition-colors"
+                style={{ color: '#c8901a' }}>
+                前往活動頁面 ↗
+              </a>
+            )}
           </div>
           <hr style={{ borderColor: '#3a2810', margin: '4px 0' }} />
           <div>
@@ -1011,7 +1038,7 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
                     <div key={idx} className="rounded-lg p-3 space-y-2"
                       style={{ background: '#141008', border: '1px solid #3d2e14' }}>
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1 flex-wrap">
+                        <div className="flex items-center gap-1">
                           <span className="text-xs text-[#9a7040]">+</span>
                           <input type="number" step="0.1" min="0"
                             value={tier.rate}
