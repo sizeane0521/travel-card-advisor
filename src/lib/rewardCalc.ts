@@ -57,13 +57,14 @@ export interface CardAdvice {
  * First tries exact match on storeName, then searches stores[] arrays.
  */
 function findStoreBonus(card: Card, storeName: string, skipPrereq = true): StoreBonus | null {
+  const allBonuses = [...card.storeBonus, ...(card.newUserBonus ?? [])];
   const isEligible = (b: StoreBonus) =>
     !skipPrereq || b.prerequisite === undefined || b.prerequisiteMet === true;
   // Exact category name match
-  const byCategory = card.storeBonus.find(b => b.storeName === storeName && isEligible(b));
+  const byCategory = allBonuses.find(b => b.storeName === storeName && isEligible(b));
   if (byCategory) return byCategory;
   // Search actual store names in stores[] and subCategories[].stores arrays
-  return card.storeBonus.find(b =>
+  return allBonuses.find(b =>
     isEligible(b) && (
       (b.stores ?? []).includes(storeName) ||
       (b.subCategories ?? []).some(sub => sub.stores.includes(storeName))
@@ -365,7 +366,7 @@ export function getSortedRecommendations(
 export function getAllStoreNames(cards: Card[]): string[] {
   const names = new Set<string>();
   for (const card of cards) {
-    for (const bonus of card.storeBonus) {
+    for (const bonus of [...card.storeBonus, ...(card.newUserBonus ?? [])]) {
       for (const store of (bonus.stores ?? [])) {
         names.add(store);
       }

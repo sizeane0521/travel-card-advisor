@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import type { Card, StoreBonus, PaymentMethodBonus, PaymentMethodBonusTier } from '../types'
-import { importCardFromUrl, importCardFromHtml } from '../lib/cardImport'
+import { importCardFromUrl, importCardFromHtml, importCardFromImage } from '../lib/cardImport'
 import type { CardImportResult } from '../lib/cardImport'
 import { useApiProvider } from '../lib/apiProviderContext'
 
@@ -39,12 +39,26 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
       capPeriod: b.capPeriod ?? 'monthly',
     }))
   )
+  const [newUserBonuses, setNewUserBonuses] = useState<StoreBonus[]>(
+    (card?.newUserBonus ?? []).map(b => ({
+      ...b,
+      stores: b.stores ?? [],
+      subCategories: b.subCategories ?? [],
+      capPeriod: b.capPeriod ?? 'monthly',
+    }))
+  )
 
-  // New bonus form state
+  // New bonus form state (store bonuses)
   const [newBonusStore, setNewBonusStore] = useState('')
   const [newBonusRate, setNewBonusRate] = useState('')
   const [newBonusCap, setNewBonusCap] = useState('')
   const [newBonusCapPeriod, setNewBonusCapPeriod] = useState<'monthly' | 'period'>('monthly')
+
+  // New user bonus form state
+  const [newNubBonusStore, setNewNubBonusStore] = useState('')
+  const [newNubBonusRate, setNewNubBonusRate] = useState('')
+  const [newNubBonusCap, setNewNubBonusCap] = useState('')
+  const [newNubBonusCapPeriod, setNewNubBonusCapPeriod] = useState<'monthly' | 'period'>('monthly')
 
   // Store alias management: track which bonus index is expanded
   const [expandedAliasIdx, setExpandedAliasIdx] = useState<number | null>(null)
@@ -54,6 +68,13 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
   const [expandedSubCatIdx, setExpandedSubCatIdx] = useState<number | null>(null)
   const [newSubCatLabel, setNewSubCatLabel] = useState('')
   const [newSubCatStores, setNewSubCatStores] = useState<Record<number, string>>({})
+
+  // New user bonus alias/subcat management
+  const [expandedNubAliasIdx, setExpandedNubAliasIdx] = useState<number | null>(null)
+  const [newNubAliasInput, setNewNubAliasInput] = useState('')
+  const [expandedNubSubCatIdx, setExpandedNubSubCatIdx] = useState<number | null>(null)
+  const [newNubSubCatLabel, setNewNubSubCatLabel] = useState('')
+  const [newNubSubCatStores, setNewNubSubCatStores] = useState<Record<number, string>>({})
 
   // Payment method bonus state
   const existingPmb = card?.paymentMethodBonus
@@ -75,9 +96,11 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
   const [importUrl, setImportUrl] = useState('')
   const [showHtmlFallback, setShowHtmlFallback] = useState(false)
   const [manualHtml, setManualHtml] = useState('')
+  const [importImage, setImportImage] = useState<{ base64: string; mimeType: string; preview: string } | null>(null)
   const [importing, setImporting] = useState(false)
   const [importError, setImportError] = useState<string | null>(null)
   const [missingFields, setMissingFields] = useState<string[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   function togglePmMethod(method: 'apple_pay' | 'google_pay') {
     setPmMethods(prev =>
@@ -112,6 +135,10 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
     ))
   }
 
+  function updatePmTier(idx: number, patch: Partial<PaymentMethodBonusTier>) {
+    setPmTiers(prev => prev.map((t, i) => i === idx ? { ...t, ...patch } : t))
+  }
+
   function buildPaymentMethodBonus(): PaymentMethodBonus | undefined {
     if (!pmBonusEnabled || pmTiers.length === 0 || pmMethods.length === 0) return undefined
     return { methods: pmMethods, tiers: pmTiers }
@@ -123,6 +150,12 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
       const match = Object.entries(DEFAULT_BANK_URLS).find(([k]) => v.includes(k.split(' ')[0]))
       if (match) setBankUrl(match[1])
     }
+  }
+
+  // ── Store bonus helpers ──────────────────────────────────────────────────
+
+  function updateBonus(idx: number, patch: Partial<StoreBonus>) {
+    setBonuses(prev => prev.map((b, i) => i === idx ? { ...b, ...patch } : b))
   }
 
   function addBonus() {
@@ -208,7 +241,146 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
     ))
   }
 
-  // task 3.4: map new CardImportResult structure to form state
+  // ── New user bonus helpers ───────────────────────────────────────────────
+
+  function updateNewUserBonus(idx: number, patch: Partial<StoreBonus>) {
+    setNewUserBonuses(prev => prev.map((b, i) => i === idx ? { ...b, ...patch } : b))
+  }
+
+  function addNewUserBonus() {
+    if (!newNubBonusStore.trim() || !newNubBonusRate || !newNubBonusCap) return
+    setNewUserBonuses(prev => [...prev, {
+      storeName: newNubBonusStore.trim(),
+      stores: [],
+      subCategories: [],
+      rate: parseFloat(newNubBonusRate),
+      cap: parseInt(newNubBonusCap, 10),
+      capPeriod: newNubBonusCapPeriod,
+      prerequisite: '限新戶',
+      prerequisiteMet: false,
+    }])
+    setNewNubBonusStore('')
+    setNewNubBonusRate('')
+    setNewNubBonusCap('')
+    setNewNubBonusCapPeriod('monthly')
+  }
+
+  function removeNewUserBonus(idx: number) {
+    setNewUserBonuses(prev => prev.filter((_, i) => i !== idx))
+    if (expandedNubAliasIdx === idx) setExpandedNubAliasIdx(null)
+    if (expandedNubSubCatIdx === idx) setExpandedNubSubCatIdx(null)
+  }
+
+  function addNubSubCategory(bonusIdx: number) {
+    const label = newNubSubCatLabel.trim()
+    if (!label) return
+    setNewUserBonuses(prev => prev.map((b, i) =>
+      i === bonusIdx
+        ? { ...b, subCategories: [...(b.subCategories ?? []), { label, stores: [] }] }
+        : b
+    ))
+    setNewNubSubCatLabel('')
+  }
+
+  function removeNubSubCategory(bonusIdx: number, subIdx: number) {
+    setNewUserBonuses(prev => prev.map((b, i) =>
+      i === bonusIdx
+        ? { ...b, subCategories: (b.subCategories ?? []).filter((_, si) => si !== subIdx) }
+        : b
+    ))
+  }
+
+  function addNubSubCatStore(bonusIdx: number, subIdx: number) {
+    const store = (newNubSubCatStores[subIdx] ?? '').trim()
+    if (!store) return
+    setNewUserBonuses(prev => prev.map((b, i) => {
+      if (i !== bonusIdx) return b
+      const subs = (b.subCategories ?? []).map((sc, si) =>
+        si === subIdx && !sc.stores.includes(store)
+          ? { ...sc, stores: [...sc.stores, store] }
+          : sc
+      )
+      return { ...b, subCategories: subs }
+    }))
+    setNewNubSubCatStores(prev => ({ ...prev, [subIdx]: '' }))
+  }
+
+  function removeNubSubCatStore(bonusIdx: number, subIdx: number, store: string) {
+    setNewUserBonuses(prev => prev.map((b, i) => {
+      if (i !== bonusIdx) return b
+      const subs = (b.subCategories ?? []).map((sc, si) =>
+        si === subIdx ? { ...sc, stores: sc.stores.filter(s => s !== store) } : sc
+      )
+      return { ...b, subCategories: subs }
+    }))
+  }
+
+  function addNubAlias(idx: number) {
+    const alias = newNubAliasInput.trim()
+    if (!alias) return
+    setNewUserBonuses(prev => prev.map((b, i) =>
+      i === idx && !b.stores.includes(alias)
+        ? { ...b, stores: [...b.stores, alias] }
+        : b
+    ))
+    setNewNubAliasInput('')
+  }
+
+  function removeNubAlias(bonusIdx: number, alias: string) {
+    setNewUserBonuses(prev => prev.map((b, i) =>
+      i === bonusIdx ? { ...b, stores: b.stores.filter(s => s !== alias) } : b
+    ))
+  }
+
+  // ── Image import helpers ─────────────────────────────────────────────────
+
+  function handleImageFile(file: File) {
+    if (file.size > 5 * 1024 * 1024) {
+      setImportError('圖片超過 5 MB，請縮小截圖後再試。')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => {
+      const dataUrl = reader.result as string
+      const comma = dataUrl.indexOf(',')
+      const header = dataUrl.slice(0, comma)
+      const base64 = dataUrl.slice(comma + 1)
+      const mimeType = header.match(/data:(.*);base64/)?.[1] ?? 'image/png'
+      setImportImage({ base64, mimeType, preview: dataUrl })
+      setImportError(null)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  function handlePaste(e: React.ClipboardEvent<HTMLDivElement>) {
+    const files = Array.from(e.clipboardData.files)
+    const imageFile = files.find(f => f.type.startsWith('image/'))
+    if (imageFile) {
+      e.preventDefault()
+      handleImageFile(imageFile)
+    }
+  }
+
+  async function handleImageImport() {
+    if (!importImage) return
+    if (!apiKey) {
+      setImportError('請先至「設定」頁面輸入 API Key 才能使用自動匯入。')
+      return
+    }
+    setImporting(true)
+    setImportError(null)
+    try {
+      const result = await importCardFromImage(importImage.base64, importImage.mimeType, apiKey, provider)
+      applyImportResult(result)
+    } catch (err) {
+      handleImportError(err)
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  // ── Apply import result ──────────────────────────────────────────────────
+
   function applyImportResult(result: CardImportResult) {
     const missing: string[] = []
     if (result.cardName) setName(result.cardName); else missing.push('卡片名稱')
@@ -229,6 +401,18 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
         ...(r.prerequisite ? { prerequisite: r.prerequisite, prerequisiteMet: false } : {}),
       })))
     }
+    if (result.newUserBonusRules && result.newUserBonusRules.length > 0) {
+      setNewUserBonuses(result.newUserBonusRules.map(r => ({
+        storeName: r.categoryName,
+        stores: r.stores,
+        subCategories: r.subCategories ?? [],
+        rate: r.bonusRate,
+        cap: r.spendCap,
+        capPeriod: r.capPeriod,
+        prerequisite: '限新戶',
+        prerequisiteMet: false,
+      })))
+    }
     if (result.paymentMethodBonusTiers && result.paymentMethodBonusTiers.length > 0) {
       setPmBonusEnabled(true)
       setPmMethods(['apple_pay', 'google_pay'])
@@ -244,6 +428,7 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
     setShowHtmlFallback(false)
     setImportUrl('')
     setManualHtml('')
+    setImportImage(null)
     setImportError(null)
   }
 
@@ -305,6 +490,7 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
       baseRate: parseFloat(baseRate),
       monthlyCap,
       storeBonus: bonuses,
+      newUserBonus: newUserBonuses.length > 0 ? newUserBonuses : undefined,
       paymentMethodBonus: buildPaymentMethodBonus(),
       validFrom: validFrom || undefined,
       validTo: validTo || undefined,
@@ -313,6 +499,199 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
 
   const inputClass = "w-full border rounded-lg px-3 py-2 focus:outline-none"
   const panelStyle = { background: '#1a1208', border: '1px solid #4a3418' }
+  const inlineNumClass = "border rounded px-1.5 py-0.5 text-xs focus:outline-none"
+  const inlineNumStyle = { background: '#0d0a06', borderColor: '#3a2810', color: '#c8a060' }
+
+  // ── Reusable store bonus list renderer ───────────────────────────────────
+
+  function renderBonusList(
+    list: StoreBonus[],
+    opts: {
+      expandedAlias: number | null
+      setExpandedAlias: (v: number | null) => void
+      aliasInput: string
+      setAliasInput: (v: string) => void
+      expandedSubCat: number | null
+      setExpandedSubCat: (v: number | null) => void
+      subCatLabel: string
+      setSubCatLabel: (v: string) => void
+      subCatStores: Record<number, string>
+      setSubCatStores: (fn: (prev: Record<number, string>) => Record<number, string>) => void
+      onUpdate: (idx: number, patch: Partial<StoreBonus>) => void
+      onRemove: (idx: number) => void
+      onAddAlias: (idx: number) => void
+      onRemoveAlias: (bi: number, alias: string) => void
+      onAddSubCat: (bi: number) => void
+      onRemoveSubCat: (bi: number, si: number) => void
+      onAddSubCatStore: (bi: number, si: number) => void
+      onRemoveSubCatStore: (bi: number, si: number, s: string) => void
+    }
+  ) {
+    return list.map((b, i) => (
+      <div key={i} className="rounded-xl p-3"
+        style={{
+          background: '#141008',
+          border: '1px solid #3d2e14',
+          ...(b.prerequisite ? { borderLeft: '3px solid #f59e0b' } : {}),
+        }}>
+        <div className="flex items-start justify-between">
+          <div className="text-sm flex-1 min-w-0">
+            <span className="font-medium text-[#f2e8c9]">{b.storeName}</span>
+            {b.prerequisite && (
+              <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded"
+                style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)' }}>
+                {b.prerequisite}
+              </span>
+            )}
+            {/* Inline rate/cap editing */}
+            <div className="flex items-center gap-1 mt-1 flex-wrap">
+              <input
+                type="number" step="0.1" min="0"
+                value={b.rate}
+                onChange={e => opts.onUpdate(i, { rate: parseFloat(e.target.value) || 0 })}
+                className={inlineNumClass}
+                style={{ ...inlineNumStyle, width: '52px' }}
+              />
+              <span className="text-xs text-[#9a7040]">% · 上限 NT$</span>
+              <input
+                type="number" min="0"
+                value={b.cap}
+                onChange={e => opts.onUpdate(i, { cap: parseInt(e.target.value) || 0 })}
+                className={inlineNumClass}
+                style={{ ...inlineNumStyle, width: '72px' }}
+              />
+              <span className="text-xs px-1.5 py-0.5 rounded"
+                style={{ background: 'rgba(200,144,26,0.1)', color: '#8a6f28' }}>
+                {b.capPeriod === 'period' ? '活動期間' : '每月'}
+              </span>
+            </div>
+            {/* Store aliases chips */}
+            {b.stores.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1">
+                {b.stores.map(s => (
+                  <span key={s} className="text-xs flex items-center gap-0.5 px-1.5 py-0.5 rounded"
+                    style={{ background: 'rgba(90,63,26,0.3)', color: '#b89444', border: '1px solid #3a2810' }}>
+                    {s}
+                    <button type="button" onClick={() => opts.onRemoveAlias(i, s)}
+                      className="ml-0.5 opacity-60 hover:opacity-100 text-[10px]">✕</button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="flex gap-1.5 ml-2 shrink-0">
+            <button type="button"
+              onClick={() => { opts.setExpandedAlias(opts.expandedAlias === i ? null : i); opts.setAliasInput('') }}
+              className="text-xs px-2 py-1 rounded-lg border transition-colors"
+              style={{ color: '#c8a060', borderColor: '#4a3418' }}>
+              {opts.expandedAlias === i ? '收起' : '＋店家'}
+            </button>
+            <button type="button"
+              onClick={() => { opts.setExpandedSubCat(opts.expandedSubCat === i ? null : i); opts.setSubCatLabel('') }}
+              className="text-xs px-2 py-1 rounded-lg border transition-colors"
+              style={{ color: '#c8a060', borderColor: '#4a3418' }}>
+              {opts.expandedSubCat === i ? '收起' : '＋分類'}
+            </button>
+            <button type="button" onClick={() => opts.onRemove(i)}
+              className="text-xs px-2 py-1 rounded-lg border transition-colors"
+              style={{ color: '#c0392b', borderColor: '#5a1a1a' }}>刪除</button>
+          </div>
+        </div>
+
+        {/* Store alias management */}
+        {opts.expandedAlias === i && (
+          <div className="mt-2 flex gap-2">
+            <input
+              value={opts.aliasInput}
+              onChange={e => opts.setAliasInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); opts.onAddAlias(i) } }}
+              placeholder="輸入實際店家名稱"
+              className="flex-1 min-w-0 border rounded-lg px-2 py-1 text-xs focus:outline-none"
+            />
+            <button type="button" onClick={() => opts.onAddAlias(i)}
+              className="text-xs px-2 py-1 rounded-lg transition-colors"
+              style={{ background: '#3d2e14', color: '#b89444', border: '1px solid #3a2810' }}>
+              加入
+            </button>
+          </div>
+        )}
+
+        {/* Sub-category management */}
+        {opts.expandedSubCat === i && (
+          <div className="mt-2 space-y-2">
+            {(b.subCategories ?? []).map((sub, si) => (
+              <div key={si}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] uppercase tracking-wider" style={{ color: '#9a7040' }}>{sub.label}</span>
+                  <button type="button" onClick={() => opts.onRemoveSubCat(i, si)}
+                    className="text-[10px] px-1.5 py-0.5 rounded border transition-colors"
+                    style={{ color: '#c0392b', borderColor: '#5a1a1a' }}>刪除</button>
+                </div>
+                <div className="flex flex-wrap gap-1 mb-1">
+                  {sub.stores.map(s => (
+                    <span key={s} className="text-xs flex items-center gap-0.5 px-1.5 py-0.5 rounded"
+                      style={{ background: 'rgba(74,174,226,0.1)', color: '#4aade2', border: '1px solid rgba(74,174,226,0.25)' }}>
+                      {s}
+                      <button type="button" onClick={() => opts.onRemoveSubCatStore(i, si, s)}
+                        className="ml-0.5 opacity-60 hover:opacity-100 text-[10px]">✕</button>
+                    </span>
+                  ))}
+                </div>
+                <div className="flex gap-1">
+                  <input
+                    value={opts.subCatStores[si] ?? ''}
+                    onChange={e => opts.setSubCatStores(prev => ({ ...prev, [si]: e.target.value }))}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); opts.onAddSubCatStore(i, si) } }}
+                    placeholder="新增店家"
+                    className="flex-1 min-w-0 border rounded px-2 py-0.5 text-xs focus:outline-none"
+                  />
+                  <button type="button" onClick={() => opts.onAddSubCatStore(i, si)}
+                    className="text-xs px-2 py-0.5 rounded-lg border"
+                    style={{ color: '#4aade2', borderColor: 'rgba(74,174,226,0.3)' }}>
+                    加入
+                  </button>
+                </div>
+              </div>
+            ))}
+            <div className="flex gap-2">
+              <input
+                value={opts.subCatLabel}
+                onChange={e => opts.setSubCatLabel(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); opts.onAddSubCat(i) } }}
+                placeholder="分類名稱（例：便利商店）"
+                className="flex-1 min-w-0 border rounded-lg px-2 py-1 text-xs focus:outline-none"
+              />
+              <button type="button" onClick={() => opts.onAddSubCat(i)}
+                className="text-xs px-2 py-1 rounded-lg border transition-colors"
+                style={{ color: '#4aade2', borderColor: 'rgba(74,174,226,0.3)' }}>
+                新增分類
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Prerequisite toggle */}
+        {b.prerequisite && (
+          <div className="mt-2 space-y-1">
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={b.prerequisiteMet ?? false}
+                onChange={() => opts.onUpdate(i, { prerequisiteMet: !b.prerequisiteMet })}
+                className="mt-0.5"
+              />
+              <span>
+                <span className="text-xs text-[#c8a060]">我目前符合此條件</span>
+                <span className="block text-xs mt-0.5" style={{ color: '#9a5020' }}>
+                  未勾選時此加碼不會計入回饋
+                </span>
+              </span>
+            </label>
+          </div>
+        )}
+      </div>
+    ))
+  }
 
   return (
     <div className="p-4 max-w-lg mx-auto">
@@ -340,11 +719,12 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
             </button>
           ) : (
             <div className="beast-card rounded-xl p-4 space-y-3"
-              style={{ background: '#181308', border: '1px solid #3a2810' }}>
+              style={{ background: '#181308', border: '1px solid #3a2810' }}
+              onPaste={handlePaste}>
               <div className="flex items-center justify-between">
                 <p className="text-sm font-medium text-[#c8901a]">從活動網址匯入（{provider === 'gemini' ? 'Gemini' : 'Claude'}）</p>
                 <button type="button"
-                  onClick={() => { setShowImportPanel(false); setImportError(null) }}
+                  onClick={() => { setShowImportPanel(false); setImportError(null); setImportImage(null) }}
                   className="text-xs text-[#9a7040]">關閉</button>
               </div>
 
@@ -355,6 +735,7 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
                 </p>
               )}
 
+              {/* URL import */}
               <input
                 value={importUrl}
                 onChange={e => setImportUrl(e.target.value)}
@@ -371,6 +752,60 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
               >
                 {importing ? '擷取中…' : '自動擷取'}
               </button>
+
+              {/* Image paste / upload section */}
+              <div>
+                <p className="text-[10px] uppercase tracking-wider mb-2" style={{ color: '#9a7040' }}>或從截圖辨識</p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex-1 text-xs py-2 rounded-lg border transition-colors"
+                    style={{ borderColor: '#4a3418', color: '#c8a060', background: 'transparent' }}
+                  >
+                    選擇圖片檔案
+                  </button>
+                </div>
+                <p className="text-[10px] mt-1.5 text-center" style={{ color: '#6a5030' }}>
+                  也可直接 Ctrl+V 貼上截圖
+                </p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={e => {
+                    const file = e.target.files?.[0]
+                    if (file) handleImageFile(file)
+                    e.target.value = ''
+                  }}
+                />
+                {importImage && (
+                  <div className="mt-2 space-y-2">
+                    <img
+                      src={importImage.preview}
+                      alt="截圖預覽"
+                      className="w-full rounded-lg max-h-40 object-contain"
+                      style={{ border: '1px solid #3a2810' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleImageImport}
+                      disabled={importing || !apiKey}
+                      className="w-full text-sm py-2 rounded font-medium transition-all disabled:opacity-30"
+                      style={{ background: 'linear-gradient(135deg, #c8901a, #d4a017)', color: '#0d0a06' }}
+                    >
+                      {importing ? '辨識中…' : '開始辨識'}
+                    </button>
+                    <button type="button"
+                      onClick={() => setImportImage(null)}
+                      className="w-full text-xs py-1 rounded border transition-colors"
+                      style={{ borderColor: '#3a2810', color: '#9a7040' }}>
+                      移除截圖
+                    </button>
+                  </div>
+                )}
+              </div>
 
               <button
                 type="button"
@@ -466,7 +901,6 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
 
           <hr style={{ borderColor: '#3a2810', margin: '4px 0' }} />
 
-          {/* task 4.3: validFrom / validTo */}
           <div className="flex gap-2">
             <div className="flex-1">
               <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">活動開始日（選填）</label>
@@ -481,167 +915,106 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
           </div>
         </div>
 
+        {/* ── New user bonus section ── */}
+        <div className="beast-card rounded-xl p-4" style={panelStyle}>
+          <h3 className="text-sm font-semibold text-[#f59e0b] mb-3 pl-3 uppercase tracking-widest"
+            style={{ borderLeft: '3px solid #f59e0b' }}>新戶加碼</h3>
+
+          <div className="space-y-2">
+            {renderBonusList(newUserBonuses, {
+              expandedAlias: expandedNubAliasIdx,
+              setExpandedAlias: setExpandedNubAliasIdx,
+              aliasInput: newNubAliasInput,
+              setAliasInput: setNewNubAliasInput,
+              expandedSubCat: expandedNubSubCatIdx,
+              setExpandedSubCat: setExpandedNubSubCatIdx,
+              subCatLabel: newNubSubCatLabel,
+              setSubCatLabel: setNewNubSubCatLabel,
+              subCatStores: newNubSubCatStores,
+              setSubCatStores: setNewNubSubCatStores,
+              onUpdate: updateNewUserBonus,
+              onRemove: removeNewUserBonus,
+              onAddAlias: addNubAlias,
+              onRemoveAlias: removeNubAlias,
+              onAddSubCat: addNubSubCategory,
+              onRemoveSubCat: removeNubSubCategory,
+              onAddSubCatStore: addNubSubCatStore,
+              onRemoveSubCatStore: removeNubSubCatStore,
+            })}
+          </div>
+
+          {/* New user bonus add form */}
+          <div className="mt-3 pt-3 space-y-2" style={{ borderTop: '1px dashed #3d2e14' }}>
+            <p className="text-[10px] uppercase tracking-wider" style={{ color: '#9a7040' }}>新增新戶加碼</p>
+            <input
+              value={newNubBonusStore}
+              onChange={e => setNewNubBonusStore(e.target.value)}
+              placeholder="加碼名稱（例：新戶實體消費加碼）"
+              className={inputClass + ' text-sm'}
+            />
+            <div className="flex gap-2">
+              <input value={newNubBonusRate} onChange={e => setNewNubBonusRate(e.target.value)}
+                type="number" step="0.1" min="0" placeholder="加碼%"
+                className="flex-1 min-w-0 border rounded-lg px-3 py-2 text-sm focus:outline-none" />
+              <input value={newNubBonusCap} onChange={e => setNewNubBonusCap(e.target.value)}
+                type="number" min="0" placeholder="上限$"
+                className="flex-1 min-w-0 border rounded-lg px-3 py-2 text-sm focus:outline-none" />
+            </div>
+            <div className="flex gap-2">
+              <button type="button"
+                onClick={() => setNewNubBonusCapPeriod('monthly')}
+                className="flex-1 py-1.5 rounded text-xs border transition-all"
+                style={newNubBonusCapPeriod === 'monthly'
+                  ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a' }
+                  : { background: 'transparent', color: '#c8a060', borderColor: '#3a2810' }}>
+                每月重置
+              </button>
+              <button type="button"
+                onClick={() => setNewNubBonusCapPeriod('period')}
+                className="flex-1 py-1.5 rounded text-xs border transition-all"
+                style={newNubBonusCapPeriod === 'period'
+                  ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a' }
+                  : { background: 'transparent', color: '#c8a060', borderColor: '#3a2810' }}>
+                活動期間
+              </button>
+              <button type="button" onClick={addNewUserBonus}
+                className="text-sm px-3 py-1.5 rounded transition-colors"
+                style={{ background: '#3d2e14', color: '#b89444', border: '1px solid #3a2810' }}>
+                新增
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* ── Store bonus rules ── */}
         <div className="beast-card rounded-xl p-4" style={panelStyle}>
           <h3 className="text-sm font-semibold text-[#d4a017] mb-3 pl-3 uppercase tracking-widest"
             style={{ borderLeft: '3px solid #c8901a' }}>特定店家加碼</h3>
 
           <div className="space-y-2">
-          {bonuses.map((b, i) => (
-            <div key={i} className="rounded-xl p-3"
-              style={{
-                background: '#141008',
-                border: '1px solid #3d2e14',
-                ...(b.prerequisite ? { borderLeft: '3px solid #f59e0b' } : {}),
-              }}>
-              <div className="flex items-start justify-between">
-                <div className="text-sm flex-1 min-w-0">
-                  <span className="font-medium text-[#f2e8c9]">{b.storeName}</span>
-                  {b.prerequisite && (
-                    <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded"
-                      style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)' }}>
-                      {b.prerequisite}
-                    </span>
-                  )}
-                  <span className="text-[#c8a060] ml-2">
-                    {b.rate}% · 上限 NT${b.cap.toLocaleString()}
-                    <span className="ml-1 text-xs px-1.5 py-0.5 rounded"
-                      style={{ background: 'rgba(200,144,26,0.1)', color: '#8a6f28' }}>
-                      {b.capPeriod === 'period' ? '活動期間' : '每月'}
-                    </span>
-                  </span>
-                  {/* store aliases chips */}
-                  {b.stores.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {b.stores.map(s => (
-                        <span key={s} className="text-xs flex items-center gap-0.5 px-1.5 py-0.5 rounded"
-                          style={{ background: 'rgba(90,63,26,0.3)', color: '#b89444', border: '1px solid #3a2810' }}>
-                          {s}
-                          <button type="button" onClick={() => removeAlias(i, s)}
-                            className="ml-0.5 opacity-60 hover:opacity-100 text-[10px]">✕</button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div className="flex gap-1.5 ml-2 shrink-0">
-                  <button type="button"
-                    onClick={() => { setExpandedAliasIdx(expandedAliasIdx === i ? null : i); setNewAliasInput('') }}
-                    className="text-xs px-2 py-1 rounded-lg border transition-colors"
-                    style={{ color: '#c8a060', borderColor: '#4a3418' }}>
-                    {expandedAliasIdx === i ? '收起' : '＋店家'}
-                  </button>
-                  <button type="button"
-                    onClick={() => { setExpandedSubCatIdx(expandedSubCatIdx === i ? null : i); setNewSubCatLabel('') }}
-                    className="text-xs px-2 py-1 rounded-lg border transition-colors"
-                    style={{ color: '#c8a060', borderColor: '#4a3418' }}>
-                    {expandedSubCatIdx === i ? '收起' : '＋分類'}
-                  </button>
-                  <button type="button" onClick={() => removeBonus(i)}
-                    className="text-xs px-2 py-1 rounded-lg border transition-colors"
-                    style={{ color: '#c0392b', borderColor: '#5a1a1a' }}>刪除</button>
-                </div>
-              </div>
-
-              {/* Store alias management */}
-              {expandedAliasIdx === i && (
-                <div className="mt-2 flex gap-2">
-                  <input
-                    value={newAliasInput}
-                    onChange={e => setNewAliasInput(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addAlias(i) } }}
-                    placeholder="輸入實際店家名稱"
-                    className="flex-1 min-w-0 border rounded-lg px-2 py-1 text-xs focus:outline-none"
-                  />
-                  <button type="button" onClick={() => addAlias(i)}
-                    className="text-xs px-2 py-1 rounded-lg transition-colors"
-                    style={{ background: '#3d2e14', color: '#b89444', border: '1px solid #3a2810' }}>
-                    加入
-                  </button>
-                </div>
-              )}
-
-              {/* Sub-category management — flat layout */}
-              {expandedSubCatIdx === i && (
-                <div className="mt-2 space-y-2">
-                  {(b.subCategories ?? []).map((sub, si) => (
-                    <div key={si}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] uppercase tracking-wider" style={{ color: '#9a7040' }}>{sub.label}</span>
-                        <button type="button" onClick={() => removeSubCategory(i, si)}
-                          className="text-[10px] px-1.5 py-0.5 rounded border transition-colors"
-                          style={{ color: '#c0392b', borderColor: '#5a1a1a' }}>刪除</button>
-                      </div>
-                      <div className="flex flex-wrap gap-1 mb-1">
-                        {sub.stores.map(s => (
-                          <span key={s} className="text-xs flex items-center gap-0.5 px-1.5 py-0.5 rounded"
-                            style={{ background: 'rgba(74,174,226,0.1)', color: '#4aade2', border: '1px solid rgba(74,174,226,0.25)' }}>
-                            {s}
-                            <button type="button" onClick={() => removeSubCatStore(i, si, s)}
-                              className="ml-0.5 opacity-60 hover:opacity-100 text-[10px]">✕</button>
-                          </span>
-                        ))}
-                      </div>
-                      <div className="flex gap-1">
-                        <input
-                          value={newSubCatStores[si] ?? ''}
-                          onChange={e => setNewSubCatStores(prev => ({ ...prev, [si]: e.target.value }))}
-                          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSubCatStore(i, si) } }}
-                          placeholder="新增店家"
-                          className="flex-1 min-w-0 border rounded px-2 py-0.5 text-xs focus:outline-none"
-                        />
-                        <button type="button" onClick={() => addSubCatStore(i, si)}
-                          className="text-xs px-2 py-0.5 rounded-lg border"
-                          style={{ color: '#4aade2', borderColor: 'rgba(74,174,226,0.3)' }}>
-                          加入
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                  {/* New sub-category form — same level as groups */}
-                  <div className="flex gap-2">
-                    <input
-                      value={newSubCatLabel}
-                      onChange={e => setNewSubCatLabel(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSubCategory(i) } }}
-                      placeholder="分類名稱（例：便利商店）"
-                      className="flex-1 min-w-0 border rounded-lg px-2 py-1 text-xs focus:outline-none"
-                    />
-                    <button type="button" onClick={() => addSubCategory(i)}
-                      className="text-xs px-2 py-1 rounded-lg border transition-colors"
-                      style={{ color: '#4aade2', borderColor: 'rgba(74,174,226,0.3)' }}>
-                      新增分類
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Prerequisite toggle for store bonus */}
-              {b.prerequisite && (
-                <div className="mt-2 space-y-1">
-                  <label className="flex items-start gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={b.prerequisiteMet ?? false}
-                      onChange={() => setBonuses(prev => prev.map((bb, bi) =>
-                        bi === i ? { ...bb, prerequisiteMet: !bb.prerequisiteMet } : bb
-                      ))}
-                      className="mt-0.5"
-                    />
-                    <span>
-                      <span className="text-xs text-[#c8a060]">我目前符合此條件</span>
-                      <span className="block text-xs mt-0.5" style={{ color: '#9a5020' }}>
-                        未勾選時此加碼不會計入回饋
-                      </span>
-                    </span>
-                  </label>
-                </div>
-              )}
-            </div>
-          ))}
+            {renderBonusList(bonuses, {
+              expandedAlias: expandedAliasIdx,
+              setExpandedAlias: setExpandedAliasIdx,
+              aliasInput: newAliasInput,
+              setAliasInput: setNewAliasInput,
+              expandedSubCat: expandedSubCatIdx,
+              setExpandedSubCat: setExpandedSubCatIdx,
+              subCatLabel: newSubCatLabel,
+              setSubCatLabel: setNewSubCatLabel,
+              subCatStores: newSubCatStores,
+              setSubCatStores: setNewSubCatStores,
+              onUpdate: updateBonus,
+              onRemove: removeBonus,
+              onAddAlias: addAlias,
+              onRemoveAlias: removeAlias,
+              onAddSubCat: addSubCategory,
+              onRemoveSubCat: removeSubCategory,
+              onAddSubCatStore: addSubCatStore,
+              onRemoveSubCatStore: removeSubCatStore,
+            })}
           </div>
 
-          {/* New bonus form — visually separated */}
+          {/* New bonus form */}
           <div className="mt-3 pt-3 space-y-2" style={{ borderTop: '1px dashed #3d2e14' }}>
             <p className="text-[10px] uppercase tracking-wider" style={{ color: '#9a7040' }}>新增加碼</p>
             <input
@@ -723,7 +1096,7 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
                 </div>
               </div>
 
-              {/* Existing tiers */}
+              {/* Existing tiers with inline editing */}
               {pmTiers.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-xs text-[#c8a060] uppercase tracking-wider">加碼層級</p>
@@ -731,11 +1104,26 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
                     <div key={idx} className="rounded-lg p-3 space-y-2"
                       style={{ background: '#141008', border: '1px solid #3d2e14' }}>
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-[#f2e8c9]">
-                          +{tier.rate}%・月上限 NT${tier.monthlyCap.toLocaleString()}
-                        </span>
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <span className="text-xs text-[#9a7040]">+</span>
+                          <input
+                            type="number" step="0.1" min="0"
+                            value={tier.rate}
+                            onChange={e => updatePmTier(idx, { rate: parseFloat(e.target.value) || 0 })}
+                            className={inlineNumClass}
+                            style={{ ...inlineNumStyle, width: '48px', color: '#f2e8c9' }}
+                          />
+                          <span className="text-xs text-[#9a7040]">%・月上限 NT$</span>
+                          <input
+                            type="number" min="0"
+                            value={tier.monthlyCap}
+                            onChange={e => updatePmTier(idx, { monthlyCap: parseInt(e.target.value) || 0 })}
+                            className={inlineNumClass}
+                            style={{ ...inlineNumStyle, width: '72px', color: '#f2e8c9' }}
+                          />
+                        </div>
                         <button type="button" onClick={() => removePmTier(idx)}
-                          className="text-xs" style={{ color: '#8b1a1a' }}>刪除</button>
+                          className="text-xs ml-2" style={{ color: '#8b1a1a' }}>刪除</button>
                       </div>
                       {tier.prerequisite && (
                         <div className="space-y-1">

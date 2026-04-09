@@ -33,6 +33,7 @@ export interface Card {
   baseRate: number;        // percentage, e.g. 3.0 = 3%
   monthlyCap: MonthlyCap;
   storeBonus: StoreBonus[];
+  newUserBonus?: StoreBonus[];
   paymentMethodBonus?: PaymentMethodBonus;
   validFrom?: string;      // promotion start date YYYY-MM-DD
   validTo?: string;        // promotion end date YYYY-MM-DD
