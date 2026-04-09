@@ -376,7 +376,6 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
         rate: r.bonusRate,
         cap: r.spendCap,
         capPeriod: r.capPeriod,
-        ...(r.prerequisite ? { prerequisite: r.prerequisite, prerequisiteMet: false } : {}),
       })))
     }
     if (result.paymentMethodBonusTiers && result.paymentMethodBonusTiers.length > 0) {
@@ -465,7 +464,6 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
   }
 
   const inputClass = "w-full border rounded-lg px-3 py-2 focus:outline-none"
-  const panelStyle = { background: '#1a1208', border: '1px solid #4a3418' }
   const inlineNumStyle = { background: '#0d0a06', borderColor: '#3a2810', color: '#c8a060' }
 
   // ── Task 3 & 4 & 5 & 6: Bonus list renderer ──────────────────────────────
