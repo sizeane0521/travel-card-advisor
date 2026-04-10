@@ -34,11 +34,13 @@ export default function SettingsPage() {
   const [showImport, setShowImport] = useState(false)
 
   const [keyInput, setKeyInput] = useState('')
+  const [apiPanelOpen, setApiPanelOpen] = useState(false)
 
   function handleSaveKey() {
     if (!keyInput.trim()) return
     setApiKey(keyInput.trim())
     setKeyInput('')
+    setApiPanelOpen(false)
   }
 
   function handleSave(card: Card) {
@@ -74,67 +76,83 @@ export default function SettingsPage() {
       {/* ── AI provider settings ── */}
       <div className="beast-card rounded-xl p-4 mb-4"
         style={{ background: '#141008', border: '1px solid #3d2e14' }}>
-        <h2 className="text-xs font-semibold text-[#c8a060] mb-3 uppercase tracking-widest">自動匯入設定</h2>
-
-        <label className="text-xs text-[#9a7040] block mb-1.5">AI 服務商</label>
-        <div className="flex gap-2 mb-3">
-          <button
-            type="button"
-            onClick={() => { setProvider('gemini'); setApiKey('') }}
-            className="flex-1 py-2 rounded text-sm border font-medium transition-all"
-            style={provider === 'gemini'
-              ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a' }
-              : { background: 'transparent', color: '#c8a060', borderColor: '#3a2810' }}
-          >
-            Gemini
-          </button>
-          <button
-            type="button"
-            onClick={() => { setProvider('claude'); setApiKey('') }}
-            className="flex-1 py-2 rounded text-sm border font-medium transition-all"
-            style={provider === 'claude'
-              ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a' }
-              : { background: 'transparent', color: '#c8a060', borderColor: '#3a2810' }}
-          >
-            Claude
-          </button>
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-semibold text-[#c8a060] uppercase tracking-widest">自動匯入設定</h2>
+          {apiKey && !apiPanelOpen ? (
+            <div className="flex items-center gap-2">
+              <span className="text-xs" style={{ color: '#4ade80' }}>
+                {provider === 'gemini' ? 'Gemini' : 'Claude'} · <span className="font-mono">{'•'.repeat(Math.max(0, apiKey.length - 4))}{apiKey.slice(-4)}</span>
+              </span>
+              <button onClick={() => setApiPanelOpen(true)} className="text-xs text-[#9a7040]">修改</button>
+            </div>
+          ) : (
+            apiKey && <button onClick={() => setApiPanelOpen(false)} className="text-xs text-[#9a7040]">收起</button>
+          )}
         </div>
 
-        <p className="text-xs text-[#9a7040] mb-3">
-          {provider === 'gemini'
-            ? 'Gemini 提供免費方案，至 aistudio.google.com 申請 API Key'
-            : '至 console.anthropic.com 申請 Claude API Key'}
-        </p>
+        {(!apiKey || apiPanelOpen) && (
+          <div className="mt-3">
+            <label className="text-xs text-[#9a7040] block mb-1.5">AI 服務商</label>
+            <div className="flex gap-2 mb-3">
+              <button
+                type="button"
+                onClick={() => { setProvider('gemini'); setApiKey('') }}
+                className="flex-1 py-2 rounded text-sm border font-medium transition-all"
+                style={provider === 'gemini'
+                  ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a' }
+                  : { background: 'transparent', color: '#c8a060', borderColor: '#3a2810' }}
+              >
+                Gemini
+              </button>
+              <button
+                type="button"
+                onClick={() => { setProvider('claude'); setApiKey('') }}
+                className="flex-1 py-2 rounded text-sm border font-medium transition-all"
+                style={provider === 'claude'
+                  ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a' }
+                  : { background: 'transparent', color: '#c8a060', borderColor: '#3a2810' }}
+              >
+                Claude
+              </button>
+            </div>
 
-        {apiKey ? (
-          <div className="flex items-center justify-between rounded-lg px-3 py-2"
-            style={{ background: '#0f1a0e', border: '1px solid #1a4a28' }}>
-            <p className="text-xs" style={{ color: '#4ade80' }}>
-              已設定：<span className="font-mono">{'•'.repeat(Math.max(0, apiKey.length - 4))}{apiKey.slice(-4)}</span>
+            <p className="text-xs text-[#9a7040] mb-3">
+              {provider === 'gemini'
+                ? 'Gemini 提供免費方案，至 aistudio.google.com 申請 API Key'
+                : '至 console.anthropic.com 申請 Claude API Key'}
             </p>
-            <button onClick={() => setApiKey('')} className="text-xs text-[#9a7040]">清除</button>
-          </div>
-        ) : (
-          <div className="flex gap-2">
-            <input
-              type="password"
-              value={keyInput}
-              onChange={e => setKeyInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSaveKey()}
-              placeholder={provider === 'gemini' ? 'AIza...' : 'sk-ant-...'}
-              className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none"
-            />
-            <button
-              onClick={handleSaveKey}
-              disabled={!keyInput.trim()}
-              className="text-sm px-4 py-2 rounded font-medium transition-all disabled:opacity-30"
-              style={{ background: '#3d2e14', color: '#c8901a', border: '1px solid #3a2810' }}
-            >
-              設定
-            </button>
+
+            {apiKey ? (
+              <div className="flex items-center justify-between rounded-lg px-3 py-2"
+                style={{ background: '#0f1a0e', border: '1px solid #1a4a28' }}>
+                <p className="text-xs" style={{ color: '#4ade80' }}>
+                  已設定：<span className="font-mono">{'•'.repeat(Math.max(0, apiKey.length - 4))}{apiKey.slice(-4)}</span>
+                </p>
+                <button onClick={() => { setApiKey(''); setApiPanelOpen(false) }} className="text-xs text-[#9a7040]">清除</button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  type="password"
+                  value={keyInput}
+                  onChange={e => setKeyInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSaveKey()}
+                  placeholder={provider === 'gemini' ? 'AIza...' : 'sk-ant-...'}
+                  className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none"
+                />
+                <button
+                  onClick={handleSaveKey}
+                  disabled={!keyInput.trim()}
+                  className="text-sm px-4 py-2 rounded font-medium transition-all disabled:opacity-30"
+                  style={{ background: '#3d2e14', color: '#c8901a', border: '1px solid #3a2810' }}
+                >
+                  設定
+                </button>
+              </div>
+            )}
+            <p className="text-xs text-[#3a2810] mt-2">Key 僅存於本次瀏覽器工作階段，重新整理或關閉分頁後自動清除。</p>
           </div>
         )}
-        <p className="text-xs text-[#3a2810] mt-2">Key 僅存於本次瀏覽器工作階段，重新整理或關閉分頁後自動清除。</p>
       </div>
 
       {/* ── Card list ── */}

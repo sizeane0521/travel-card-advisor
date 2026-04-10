@@ -452,7 +452,7 @@ export default function CalcPage() {
                           ? { background: 'transparent', color: '#3d2e14', borderColor: '#3d2e14', cursor: 'not-allowed' }
                           : { background: 'transparent', color: '#c8901a', borderColor: '#c8901a' }}
                       >
-                        +記帳
+                        +明細
                       </button>
                     </div>
 
@@ -486,10 +486,11 @@ export default function CalcPage() {
                     {/* Prerequisite tier toggles (payment method) */}
                     {paymentMethod !== 'physical' &&
                       advice.card.paymentMethodBonus?.methods.includes(paymentMethod) &&
-                      advice.card.paymentMethodBonus.tiers.some(t => t.prerequisite) && (
+                      advice.card.paymentMethodBonus.tiers.some(t => t.prerequisite && t.prerequisiteMet !== false) && (
                       <div className="mt-2 flex flex-wrap gap-1.5" onClick={e => e.stopPropagation()}>
                         {advice.card.paymentMethodBonus.tiers.map((tier, tierIdx) => {
                           if (!tier.prerequisite) return null
+                          if (tier.prerequisiteMet === false) return null
                           const isEnabled = prereqOverrides[advice.card.id]?.[tierIdx] === true
                           return (
                             <button
@@ -512,10 +513,11 @@ export default function CalcPage() {
                     )}
 
                     {/* Prerequisite toggles (store bonus) */}
-                    {advice.card.storeBonus.some(b => b.prerequisite) && (
+                    {advice.card.storeBonus.some(b => b.prerequisite && b.prerequisiteMet !== false) && (
                       <div className="mt-2 flex flex-wrap gap-1.5" onClick={e => e.stopPropagation()}>
                         {advice.card.storeBonus.map((b, bIdx) => {
                           if (!b.prerequisite) return null
+                          if (b.prerequisiteMet === false) return null
                           const isEnabled = storeBonusOverrides[advice.card.id]?.[bIdx] === true
                           return (
                             <button

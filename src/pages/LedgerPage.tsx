@@ -114,7 +114,7 @@ export default function LedgerPage() {
                 ).reduce((sum, e) => sum + (e.rewardBreakdown?.store ?? 0), 0)
             rows.push({
               cardName: card.name,
-              label: `${b.storeName}加碼`,
+              label: b.storeName,
               key: `${card.id}:store:${b.storeName}`,
               used: rewardUsed,
               cap: b.cap,
@@ -124,10 +124,15 @@ export default function LedgerPage() {
 
           // Payment method bonus tier rows: skip unmet prerequisites, skip monthlyCap=0
           if (card.paymentMethodBonus) {
+            const activePmTierCount = card.paymentMethodBonus.tiers.filter(
+              t => t.monthlyCap > 0 && (t.prerequisite === undefined || t.prerequisiteMet === true)
+            ).length
+            let pmSeq = 0
             for (const [tierIdx, tier] of card.paymentMethodBonus.tiers.entries()) {
               if (tier.monthlyCap <= 0) continue
               if (tier.prerequisite !== undefined && tier.prerequisiteMet !== true) continue
-              const tierLabel = tier.prerequisite ?? '行動支付加碼'
+              pmSeq++
+              const tierLabel = activePmTierCount > 1 ? `行動支付加碼 #${pmSeq}` : '行動支付加碼'
               const monthlyPmReward = allExpenses
                 .filter(e => e.cardId === card.id && e.date.startsWith(currentMonth))
                 .reduce((sum, e) => sum + (e.paymentMethodReward ?? 0), 0)
