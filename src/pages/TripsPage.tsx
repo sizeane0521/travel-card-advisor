@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { useStore } from '../store/useStore'
+import type { Trip } from '../types'
+import TripDetailPage from './TripDetailPage'
 
 function genId(): string {
   return `trip-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
@@ -15,8 +17,13 @@ export default function TripsPage() {
   const [name, setName] = useState('')
   const [startDate, setStartDate] = useState(todayStr())
   const [exchangeRateInput, setExchangeRateInput] = useState('')
+  const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null)
 
   const sortedTrips = [...data.trips].reverse()
+
+  if (selectedTrip !== null) {
+    return <TripDetailPage trip={selectedTrip} cards={data.cards} onBack={() => setSelectedTrip(null)} />
+  }
 
   function handleCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -45,6 +52,11 @@ export default function TripsPage() {
   function handleEnd(tripId: string) {
     if (!confirm('確定要結束此旅程嗎？結束後無法新增消費。')) return
     dispatch({ type: 'END_TRIP', tripId, endDate: todayStr() })
+  }
+
+  function handleDelete(tripId: string) {
+    if (!confirm('確定要刪除此旅程嗎？旅程內所有消費記錄將一併刪除。')) return
+    dispatch({ type: 'DELETE_TRIP', tripId })
   }
 
   function handleSetActive(tripId: string) {
@@ -133,13 +145,14 @@ export default function TripsPage() {
             return (
               <div
                 key={trip.id}
-                className="beast-card rounded-xl p-4"
+                onClick={() => setSelectedTrip(trip)}
+                className="beast-card rounded-xl p-4 cursor-pointer active:opacity-80 transition-opacity"
                 style={isActive
                   ? { background: '#1e1608', border: '1px solid #c8901a', boxShadow: '0 0 14px rgba(200,144,26,0.13)' }
                   : { background: '#1a1208', border: '1px solid #3d2e14' }}
               >
                 <div className="flex items-start justify-between">
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       {isActive && (
                         <span className="text-[10px] px-2 py-0.5 rounded font-semibold tracking-wider"
@@ -159,6 +172,7 @@ export default function TripsPage() {
                       {trip.startDate}{trip.endDate ? ` — ${trip.endDate}` : ''}
                     </p>
                   </div>
+                  <span className="text-[#9a7040] text-lg ml-2 shrink-0">›</span>
                 </div>
 
                 <div className="mt-2 flex gap-4 text-sm">
@@ -167,7 +181,7 @@ export default function TripsPage() {
                   <span className="text-[#9a7040]">{trip.expenses.length} 筆</span>
                 </div>
 
-                <div className="mt-3 flex gap-2">
+                <div className="mt-3 flex gap-2" onClick={e => e.stopPropagation()}>
                   {!isActive && !isEnded && (
                     <button
                       onClick={() => handleSetActive(trip.id)}
@@ -186,6 +200,13 @@ export default function TripsPage() {
                       結束旅程
                     </button>
                   )}
+                  <button
+                    onClick={() => handleDelete(trip.id)}
+                    className="text-xs px-3 py-1 rounded border transition-colors"
+                    style={{ borderColor: '#5a1a1a', color: '#c0392b' }}
+                  >
+                    刪除
+                  </button>
                 </div>
               </div>
             )

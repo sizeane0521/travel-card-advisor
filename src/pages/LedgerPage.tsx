@@ -28,65 +28,13 @@ export default function LedgerPage() {
 
   return (
     <div className="p-4 max-w-lg mx-auto">
-      {/* Header — 明細 + expense count */}
+      {/* Header — 刷卡金 + expense count */}
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-lg font-semibold text-[#f2e8c9]">明細</h1>
+        <h1 className="text-lg font-semibold text-[#f2e8c9]">刷卡金</h1>
         <span className="text-sm text-[#c8a060]">本次旅程 {activeTrip.expenses.length} 筆</span>
       </div>
 
-      {/* ── Expense list ── */}
-      <h2 className="text-sm font-semibold text-[#d4a017] mb-2 pl-3 uppercase tracking-widest" style={{ borderLeft: '3px solid #c8901a' }}>本次旅程消費記錄</h2>
-      {expenses.length === 0 ? (
-        <p className="text-[#9a7040] text-sm text-center py-4">尚無消費記錄</p>
-      ) : (
-        <div className="space-y-2">
-          {expenses.map(e => {
-            const card = data.cards.find(c => c.id === e.cardId)
-            return (
-              <div key={e.id}
-                className="beast-card rounded-xl p-3 flex items-center justify-between"
-                style={{ background: '#1a1208', border: '1px solid #3d2e14' }}>
-                <div className="flex-1 min-w-0 mr-2">
-                  <p className="text-xs text-[#9a7040]">{e.date} · {e.store ?? '一般消費'}</p>
-                  <p className="font-medium text-[#f2e8c9]">
-                    {e.foreignAmount
-                      ? `¥${e.foreignAmount.amount.toLocaleString()} (NT$${e.amount.toLocaleString()})`
-                      : `NT$${e.amount.toLocaleString()}`}
-                  </p>
-                  <p className="text-xs text-[#c8a060]">
-                    {card?.name ?? e.cardId}
-                    {e.rewardBreakdown && (
-                      <span className="ml-1 px-1.5 py-0.5 rounded text-[10px]"
-                        style={{ background: 'rgba(212,160,23,0.12)', color: '#d4a017', border: '1px solid rgba(212,160,23,0.2)' }}>
-                        {e.rewardBreakdown.effectiveRate}%
-                      </span>
-                    )}
-                  </p>
-                  {e.rewardBreakdown && (e.rewardBreakdown.store > 0 || e.rewardBreakdown.paymentMethod > 0) ? (
-                    <p className="text-xs mt-0.5" style={{ color: '#4ade80' }}>
-                      回饋 NT${e.estimatedReward.toLocaleString()} = 基本 NT${e.rewardBreakdown.base.toLocaleString()}
-                      {e.rewardBreakdown.store > 0 && ` + ${e.store ?? ''}加碼 NT$${e.rewardBreakdown.store.toLocaleString()}`}
-                      {e.rewardBreakdown.paymentMethod > 0 && ` + 行動支付加碼 NT$${e.rewardBreakdown.paymentMethod.toLocaleString()}`}
-                    </p>
-                  ) : (
-                    <p className="text-xs mt-0.5" style={{ color: '#4ade80' }}>回饋 NT${e.estimatedReward.toLocaleString()}</p>
-                  )}
-                </div>
-                <button
-                  onClick={() => handleDelete(e.id)}
-                  className="text-xs px-3 py-1.5 rounded border transition-colors shrink-0"
-                  style={{ color: '#c0392b', borderColor: '#3a1010' }}
-                  aria-label="刪除"
-                >
-                  刪除
-                </button>
-              </div>
-            )
-          })}
-        </div>
-      )}
-
-      {/* ── Bonus status panel ── */}
+      {/* ── Bonus status panel (置頂) ── */}
       {(() => {
         const currentMonth = new Date().toISOString().slice(0, 7)
         type BonusRow = { cardName: string; label: string; key: string; used: number; cap: number; periodLabel: string }
@@ -161,7 +109,7 @@ export default function LedgerPage() {
 
         if (rows.length === 0) return null
         return (
-          <div className="mt-4">
+          <div className="mb-4">
             <h2 className="text-sm font-semibold text-[#d4a017] mb-2 pl-3 uppercase tracking-widest" style={{ borderLeft: '3px solid #c8901a' }}>加碼額度狀態</h2>
             <div className="space-y-2">
               {rows.map(({ cardName, label, key, used, cap, periodLabel }) => {
@@ -195,6 +143,58 @@ export default function LedgerPage() {
           </div>
         )
       })()}
+
+      {/* ── Expense list ── */}
+      <h2 className="text-sm font-semibold text-[#d4a017] mb-2 pl-3 uppercase tracking-widest" style={{ borderLeft: '3px solid #c8901a' }}>本次旅程消費記錄</h2>
+      {expenses.length === 0 ? (
+        <p className="text-[#9a7040] text-sm text-center py-4">尚無消費記錄</p>
+      ) : (
+        <div className="space-y-2">
+          {expenses.map(e => {
+            const card = data.cards.find(c => c.id === e.cardId)
+            return (
+              <div key={e.id}
+                className="beast-card rounded-xl p-3 flex items-center justify-between"
+                style={{ background: '#1a1208', border: '1px solid #3d2e14' }}>
+                <div className="flex-1 min-w-0 mr-2">
+                  <p className="text-xs text-[#9a7040]">{e.date} · {e.store ?? '一般消費'}</p>
+                  <p className="font-medium text-[#f2e8c9]">
+                    {e.foreignAmount
+                      ? `¥${e.foreignAmount.amount.toLocaleString()} (NT$${e.amount.toLocaleString()})`
+                      : `NT$${e.amount.toLocaleString()}`}
+                  </p>
+                  <p className="text-xs text-[#c8a060]">
+                    {card?.name ?? e.cardId}
+                    {e.rewardBreakdown && (
+                      <span className="ml-1 px-1.5 py-0.5 rounded text-[10px]"
+                        style={{ background: 'rgba(212,160,23,0.12)', color: '#d4a017', border: '1px solid rgba(212,160,23,0.2)' }}>
+                        {e.rewardBreakdown.effectiveRate}%
+                      </span>
+                    )}
+                  </p>
+                  {e.rewardBreakdown && (e.rewardBreakdown.store > 0 || e.rewardBreakdown.paymentMethod > 0) ? (
+                    <p className="text-xs mt-0.5" style={{ color: '#4ade80' }}>
+                      回饋 NT${e.estimatedReward.toLocaleString()} = 基本 NT${e.rewardBreakdown.base.toLocaleString()}
+                      {e.rewardBreakdown.store > 0 && ` + ${e.store ?? ''}加碼 NT$${e.rewardBreakdown.store.toLocaleString()}`}
+                      {e.rewardBreakdown.paymentMethod > 0 && ` + 行動支付加碼 NT$${e.rewardBreakdown.paymentMethod.toLocaleString()}`}
+                    </p>
+                  ) : (
+                    <p className="text-xs mt-0.5" style={{ color: '#4ade80' }}>回饋 NT${e.estimatedReward.toLocaleString()}</p>
+                  )}
+                </div>
+                <button
+                  onClick={() => handleDelete(e.id)}
+                  className="text-xs px-3 py-1.5 rounded border transition-colors shrink-0"
+                  style={{ color: '#c0392b', borderColor: '#3a1010' }}
+                  aria-label="刪除"
+                >
+                  刪除
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

@@ -10,16 +10,16 @@ TBD - created by archiving change 'travel-card-advisor'. Update Purpose after ar
 
 The system SHALL allow users to record an expense by entering an amount and optionally selecting a store via a search input field. The system SHALL automatically select the highest-reward card based on the entered amount and selected store. The expense entry form SHALL reside in the 試算 Tab (CalcPage).
 
-Each card row in the inline recommendation list SHALL display a「+記帳」inline action button. Tapping the「+記帳」button on a card row SHALL record the expense using that card — no separate global submit button is required.
+Each card row in the inline recommendation list SHALL display a「+刷卡」inline action button. Tapping the「+刷卡」button on a card row SHALL record the expense using that card — no separate global submit button is required.
 
-When the user taps「+記帳」on a card row:
+When the user taps「+刷卡」on a card row:
 - If the amount field is empty or invalid (not a positive integer), the system SHALL display a validation error message "請輸入正整數金額" and SHALL NOT record the expense
 - If the amount is valid, the system SHALL compute and dispatch the expense identically to the previous submit behavior, using the tapped card's ID, the current store, payment method, and prerequisite overrides
 - After a successful record, the form SHALL reset: amount and store inputs SHALL be cleared; the selected payment method, selectedCardId, AND `prereqOverrides` SHALL be preserved (NOT cleared)
 - The system SHALL display a toast notification at the top of the page showing the reward breakdown for the recorded expense. The toast SHALL auto-dismiss after 3 seconds. The toast content SHALL follow the format: "已記帳！回饋 NT${total} = 基本 NT${base} + {storeName}加碼 NT${store} + 行動支付加碼 NT${pm}". Segments with zero value SHALL be omitted. When only base reward applies, the toast SHALL show "已記帳！回饋 NT${total}"
 - The user SHALL remain on the 試算 Tab after submission (no automatic tab switch)
 
-The「+記帳」button SHALL be disabled (not tappable) when `card.isFull === true`.
+The「+刷卡」button SHALL be disabled (not tappable) when `card.isFull === true`.
 
 When the active trip has an `exchangeRate` set (e.g. `{ currency: "JPY", rate: 0.22 }`):
 - The expense entry form SHALL display a foreign currency input field (e.g. "金額（JPY）")
@@ -36,7 +36,7 @@ The store selection area SHALL use a search-first interaction model:
 
 #### Scenario: Toast shown after successful record
 
-- **WHEN** user enters NT$6300 at 7-ELEVEN with Apple Pay on 吉鶴卡 (base NT$157, 行動支付加碼 NT$94) and taps「+記帳」
+- **WHEN** user enters NT$6300 at 7-ELEVEN with Apple Pay on 吉鶴卡 (base NT$157, 行動支付加碼 NT$94) and taps「+刷卡」
 - **THEN** a toast SHALL appear at the top of the page: "已記帳！回饋 NT$251 = 基本 NT$157 + 行動支付加碼 NT$94"
 - **THEN** the toast SHALL auto-dismiss after 3 seconds
 
@@ -47,7 +47,7 @@ The store selection area SHALL use a search-first interaction model:
 
 #### Scenario: prereqOverrides preserved after record
 
-- **WHEN** user has toggled a payment method prerequisite chip (e.g. "前月帳單滿30000元 (+1%)") and taps「+記帳」
+- **WHEN** user has toggled a payment method prerequisite chip (e.g. "前月帳單滿30000元 (+1%)") and taps「+刷卡」
 - **THEN** after the record, the prerequisite toggle SHALL remain in its current state (on)
 - **THEN** the next expense calculation SHALL include that tier's rate
 
@@ -63,7 +63,7 @@ The store selection area SHALL use a search-first interaction model:
 
 #### Scenario: Record expense via per-card button
 
-- **WHEN** user enters NT$1500 in the amount field and taps「+記帳」on Card A
+- **WHEN** user enters NT$1500 in the amount field and taps「+刷卡」on Card A
 - **THEN** the system SHALL record the expense using Card A's ID, the current store, and payment method
 - **THEN** the amount and store fields SHALL be cleared
 - **THEN** the user SHALL remain on the 試算 Tab
@@ -71,11 +71,11 @@ The store selection area SHALL use a search-first interaction model:
 #### Scenario: Per-card button disabled when card is full
 
 - **WHEN** Card A has `isFull: true`
-- **THEN** the「+記帳」button on Card A's row SHALL be disabled and non-interactive
+- **THEN** the「+刷卡」button on Card A's row SHALL be disabled and non-interactive
 
 #### Scenario: Validation error when amount is empty
 
-- **WHEN** user taps「+記帳」on any card row with an empty or zero amount field
+- **WHEN** user taps「+刷卡」on any card row with an empty or zero amount field
 - **THEN** the system SHALL display "請輸入正整數金額" validation error
 - **THEN** no expense SHALL be recorded
 
@@ -406,7 +406,7 @@ Cards with `isFull: true` SHALL appear at the bottom of the list with a "本月�
 
 The "🌟 最佳推薦" label SHALL appear as a separate line above the card name within the top-ranked card's row. The card name SHALL always be left-aligned at the same horizontal position as card names in all other rows.
 
-Each card row SHALL include a「+記帳」inline action button on the right side of the row. The button SHALL be disabled when `card.isFull === true`. Tapping the button SHALL record the expense using that card (see Record a single expense requirement for full record behavior).
+Each card row SHALL include a「+刷卡」inline action button on the right side of the row. The button SHALL be disabled when `card.isFull === true`. Tapping the button SHALL record the expense using that card (see Record a single expense requirement for full record behavior).
 
 #### Scenario: Best card badge does not misalign card names
 
@@ -423,8 +423,8 @@ Each card row SHALL include a「+記帳」inline action button on the right side
 #### Scenario: Per-card button visible on each row
 
 - **WHEN** the recommendation list renders with at least one non-full card
-- **THEN** each non-full card row SHALL display a「+記帳」button on its right side
-- **THEN** full cards SHALL render their「+記帳」button in a disabled state
+- **THEN** each non-full card row SHALL display a「+刷卡」button on its right side
+- **THEN** full cards SHALL render their「+刷卡」button in a disabled state
 
 
 <!-- @trace
@@ -582,4 +582,33 @@ code:
   - src/pages/ExpensePage.tsx
   - src/types/index.ts
   - src/components/CardForm.tsx
+-->
+---
+### Requirement: 刷卡金 Tab identity and layout
+
+The second navigation Tab SHALL be labeled「刷卡金」and display a credit card icon (rectangular card outline with a horizontal stripe and short line segments representing card number area). The Tab was previously labeled「明細」with a scroll/document icon.
+
+Within the 刷卡金 Tab, the bonus quota status panel SHALL appear above the expense list. The layout order SHALL be:
+1. Page header (「刷卡金」title + expense count)
+2. Bonus quota status panel (加碼額度狀態)
+3. Current trip expense list (本次旅程消費記錄)
+
+#### Scenario: Tab displays correct label and icon
+
+- **WHEN** user views the bottom navigation bar
+- **THEN** the second Tab SHALL display the label「刷卡金」
+- **THEN** the second Tab icon SHALL be a credit card shape
+
+#### Scenario: Bonus quota status appears above expense list
+
+- **WHEN** user navigates to the 刷卡金 Tab with an active trip and qualifying bonus rows
+- **THEN** the bonus quota status panel SHALL be visible before scrolling to the expense list
+- **THEN** the expense list SHALL appear below the bonus quota status panel
+
+<!-- @trace
+source: ledger-rebrand-and-trip-detail
+updated: 2026-04-10
+code:
+  - src/App.tsx
+  - src/pages/LedgerPage.tsx
 -->

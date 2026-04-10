@@ -452,7 +452,7 @@ export default function CalcPage() {
                           ? { background: 'transparent', color: '#3d2e14', borderColor: '#3d2e14', cursor: 'not-allowed' }
                           : { background: 'transparent', color: '#c8901a', borderColor: '#c8901a' }}
                       >
-                        +明細
+                        +刷卡
                       </button>
                     </div>
 
