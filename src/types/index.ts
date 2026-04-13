@@ -51,6 +51,7 @@ export interface Expense {
   paymentMethod?: 'apple_pay' | 'google_pay' | 'physical';
   paymentMethodReward?: number; // NT$ from mobile pay bonus tiers (for monthly cap tracking)
   rewardBreakdown?: { base: number; store: number; paymentMethod: number; effectiveRate: number }; // saved breakdown at time of logging
+  customRate?: number; // per-expense exchange rate override (when user manually adjusts rate for cash payments)
 }
 
 export interface Trip {

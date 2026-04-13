@@ -1,4 +1,7 @@
+import { useState } from 'react'
 import { useStore } from '../store/useStore'
+import { calcExpenseReward } from '../lib/rewardCalc'
+import type { Expense } from '../types'
 
 export default function LedgerPage() {
   const { data, dispatch } = useStore()
@@ -7,9 +10,68 @@ export default function LedgerPage() {
   const expenses = activeTrip ? [...activeTrip.expenses].reverse() : []
   const allExpenses = data.trips.flatMap(t => t.expenses)
 
+  // 7.1 Edit state
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editAmount, setEditAmount] = useState('')
+  const [editDate, setEditDate] = useState('')
+  const [editCardId, setEditCardId] = useState('')
+
   function handleDelete(expenseId: string) {
     if (!activeTrip) return
     dispatch({ type: 'DELETE_EXPENSE', tripId: activeTrip.id, expenseId })
+  }
+
+  function startEdit(e: Expense) {
+    setEditingId(e.id)
+    setEditAmount(String(e.amount))
+    setEditDate(e.date)
+    setEditCardId(e.cardId)
+  }
+
+  // 7.3 Cancel edit
+  function cancelEdit() {
+    setEditingId(null)
+  }
+
+  // 7.4 Save edit — recalculate reward with default prerequisites
+  function saveEdit(original: Expense) {
+    if (!activeTrip) return
+    const parsedAmount = parseInt(editAmount, 10)
+    if (!parsedAmount || parsedAmount <= 0) return
+
+    const card = data.cards.find(c => c.id === editCardId)
+    if (!card) return
+
+    const { estimatedReward, paymentMethodReward, breakdown } = calcExpenseReward(
+      card,
+      parsedAmount,
+      original.store,
+      activeTrip.expenses,
+      original.paymentMethod ?? 'physical',
+      undefined,
+      undefined, // no prereq overrides — accepted small difference
+      allExpenses
+    )
+
+    const updated: Expense = {
+      ...original,
+      amount: parsedAmount,
+      date: editDate,
+      cardId: editCardId,
+      estimatedReward,
+      paymentMethodReward,
+      rewardBreakdown: {
+        base: breakdown.base,
+        store: breakdown.store,
+        paymentMethod: breakdown.paymentMethod,
+        effectiveRate: breakdown.base + breakdown.store + breakdown.paymentMethod > 0
+          ? Math.round((estimatedReward / parsedAmount) * 10000) / 100
+          : 0,
+      },
+    }
+
+    dispatch({ type: 'UPDATE_EXPENSE', tripId: activeTrip.id, expense: updated })
+    setEditingId(null)
   }
 
   if (!activeTrip) {
@@ -28,20 +90,19 @@ export default function LedgerPage() {
 
   return (
     <div className="p-4 max-w-lg mx-auto">
-      {/* Header — 刷卡金 + expense count */}
+      {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-lg font-semibold text-[#f2e8c9]">刷卡金</h1>
         <span className="text-sm text-[#c8a060]">本次旅程 {activeTrip.expenses.length} 筆</span>
       </div>
 
-      {/* ── Bonus status panel (置頂) ── */}
+      {/* ── Bonus status panel ── */}
       {(() => {
         const currentMonth = new Date().toISOString().slice(0, 7)
         type BonusRow = { cardName: string; label: string; key: string; used: number; cap: number; periodLabel: string }
         const rows: BonusRow[] = []
 
         for (const card of data.cards) {
-          // Store bonus rows: skip unmet prerequisites, skip cap=0
           for (const b of card.storeBonus) {
             if (b.cap <= 0) continue
             if (b.prerequisite !== undefined && b.prerequisiteMet !== true) continue
@@ -70,7 +131,6 @@ export default function LedgerPage() {
             })
           }
 
-          // Payment method bonus tier rows: skip unmet prerequisites, skip monthlyCap=0
           if (card.paymentMethodBonus) {
             const activePmTierCount = card.paymentMethodBonus.tiers.filter(
               t => t.monthlyCap > 0 && (t.prerequisite === undefined || t.prerequisiteMet === true)
@@ -84,7 +144,6 @@ export default function LedgerPage() {
               const monthlyPmReward = allExpenses
                 .filter(e => e.cardId === card.id && e.date.startsWith(currentMonth))
                 .reduce((sum, e) => sum + (e.paymentMethodReward ?? 0), 0)
-              // Distribute accrued rewards across tiers in order (same logic as calcPaymentMethodBonus)
               let remaining = monthlyPmReward
               let tierUsed = 0
               for (let i = 0; i <= tierIdx; i++) {
@@ -152,10 +211,79 @@ export default function LedgerPage() {
         <div className="space-y-2">
           {expenses.map(e => {
             const card = data.cards.find(c => c.id === e.cardId)
+            const isEditing = editingId === e.id
+
+            if (isEditing) {
+              // 7.2 Inline edit mode
+              return (
+                <div key={e.id}
+                  className="beast-card rounded-xl p-3"
+                  style={{ background: '#1e1608', border: '1px solid #c8901a' }}>
+                  <p className="text-xs text-[#9a7040] mb-2">{e.store ?? '一般消費'} · 編輯模式</p>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="text-xs text-[#9a7040] block mb-0.5">金額（NT$）</label>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        value={editAmount}
+                        onChange={ev => setEditAmount(ev.target.value)}
+                        className="w-full border rounded px-2 py-1.5 text-sm focus:outline-none"
+                        style={{ background: '#141008', borderColor: '#4a3418', color: '#f2e8c9' }}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-[#9a7040] block mb-0.5">日期</label>
+                      <input
+                        type="date"
+                        value={editDate}
+                        min={activeTrip.startDate}
+                        max={activeTrip.endDate ?? new Date().toISOString().slice(0, 10)}
+                        onChange={ev => setEditDate(ev.target.value)}
+                        className="w-full border rounded px-2 py-1.5 text-sm focus:outline-none"
+                        style={{ background: '#141008', borderColor: '#4a3418', color: '#f2e8c9' }}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-[#9a7040] block mb-0.5">信用卡</label>
+                      <select
+                        value={editCardId}
+                        onChange={ev => setEditCardId(ev.target.value)}
+                        className="w-full border rounded px-2 py-1.5 text-sm focus:outline-none"
+                        style={{ background: '#141008', borderColor: '#4a3418', color: '#f2e8c9' }}
+                      >
+                        {data.cards.map(c => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        onClick={() => saveEdit(e)}
+                        className="flex-1 py-1.5 rounded-lg text-xs font-semibold border"
+                        style={{ background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a' }}
+                      >
+                        儲存
+                      </button>
+                      <button
+                        onClick={cancelEdit}
+                        className="flex-1 py-1.5 rounded-lg text-xs border"
+                        style={{ background: 'transparent', color: '#c8a060', borderColor: '#4a3418' }}
+                      >
+                        取消
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            }
+
             return (
               <div key={e.id}
                 className="beast-card rounded-xl p-3 flex items-center justify-between"
-                style={{ background: '#1a1208', border: '1px solid #3d2e14' }}>
+                style={{ background: '#1a1208', border: '1px solid #3d2e14', cursor: 'pointer' }}
+                onClick={() => startEdit(e)}
+              >
                 <div className="flex-1 min-w-0 mr-2">
                   <p className="text-xs text-[#9a7040]">{e.date} · {e.store ?? '一般消費'}</p>
                   <p className="font-medium text-[#f2e8c9]">
@@ -164,7 +292,7 @@ export default function LedgerPage() {
                       : `NT$${e.amount.toLocaleString()}`}
                   </p>
                   <p className="text-xs text-[#c8a060]">
-                    {card?.name ?? e.cardId}
+                    {card?.name ?? '已刪除的卡片'}
                     {e.rewardBreakdown && (
                       <span className="ml-1 px-1.5 py-0.5 rounded text-[10px]"
                         style={{ background: 'rgba(212,160,23,0.12)', color: '#d4a017', border: '1px solid rgba(212,160,23,0.2)' }}>
@@ -183,7 +311,7 @@ export default function LedgerPage() {
                   )}
                 </div>
                 <button
-                  onClick={() => handleDelete(e.id)}
+                  onClick={ev => { ev.stopPropagation(); handleDelete(e.id) }}
                   className="text-xs px-3 py-1.5 rounded border transition-colors shrink-0"
                   style={{ color: '#c0392b', borderColor: '#3a1010' }}
                   aria-label="刪除"

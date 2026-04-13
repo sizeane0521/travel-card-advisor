@@ -21,7 +21,8 @@ type Action =
   | { type: 'END_TRIP'; tripId: string; endDate: string }
   | { type: 'DELETE_TRIP'; tripId: string }
   | { type: 'ADD_EXPENSE'; tripId: string; expense: Expense }
-  | { type: 'DELETE_EXPENSE'; tripId: string; expenseId: string };
+  | { type: 'DELETE_EXPENSE'; tripId: string; expenseId: string }
+  | { type: 'UPDATE_EXPENSE'; tripId: string; expense: Expense };
 
 // ── Reducer ───────────────────────────────────────────────────────────────────
 
@@ -64,6 +65,15 @@ function reducer(state: AppData, action: Action): AppData {
         trips: state.trips.map(t =>
           t.id === action.tripId
             ? { ...t, expenses: t.expenses.filter(e => e.id !== action.expenseId) }
+            : t
+        ),
+      };
+    case 'UPDATE_EXPENSE':
+      return {
+        ...state,
+        trips: state.trips.map(t =>
+          t.id === action.tripId
+            ? { ...t, expenses: t.expenses.map(e => e.id === action.expense.id ? action.expense : e) }
             : t
         ),
       };

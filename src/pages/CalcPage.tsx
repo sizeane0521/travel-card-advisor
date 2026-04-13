@@ -20,22 +20,83 @@ function formatBreakdown(total: number, bd: RewardBreakdown, storeBonusLabel: st
   return `NT$${total.toLocaleString()} = ${parts.join(' + ')}`
 }
 
+function getDraftKey(tripId: string | null): string {
+  return `calc-draft-${tripId ?? 'none'}`
+}
+
+interface Draft {
+  amount: string
+  store: string
+  paymentMethod: 'apple_pay' | 'google_pay' | 'physical'
+}
+
+function loadDraft(tripId: string | null): Draft | null {
+  try {
+    const raw = sessionStorage.getItem(getDraftKey(tripId))
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+function saveDraft(tripId: string | null, draft: Draft) {
+  try {
+    sessionStorage.setItem(getDraftKey(tripId), JSON.stringify(draft))
+  } catch {}
+}
+
+function clearDraft(tripId: string | null) {
+  try {
+    sessionStorage.removeItem(getDraftKey(tripId))
+  } catch {}
+}
+
 export default function CalcPage() {
   const { data, dispatch } = useStore()
   const activeTrip = data.trips.find(t => t.id === data.activeTripId) ?? null
 
-  const [amount, setAmount] = useState('')
-  const [store, setStore] = useState<string>('')
+  // Initialise from sessionStorage draft for current trip
+  const initialDraft = loadDraft(data.activeTripId)
+  const [amount, setAmount] = useState(initialDraft?.amount ?? '')
+  const [store, setStore] = useState<string>(initialDraft?.store ?? '')
+  const [paymentMethod, setPaymentMethod] = useState<'apple_pay' | 'google_pay' | 'physical'>(initialDraft?.paymentMethod ?? 'apple_pay')
+
   const [selectedCardId, setSelectedCardId] = useState<string>('')
-  const [storeQuery, setStoreQuery] = useState('')
+  const [storeQuery, setStoreQuery] = useState(initialDraft?.store ?? '')
   const [amountError, setAmountError] = useState('')
-  const [paymentMethod, setPaymentMethod] = useState<'apple_pay' | 'google_pay' | 'physical'>('apple_pay')
   const [prereqOverrides, setPrereqOverrides] = useState<Record<string, Record<number, boolean>>>({})
   const [showCategoryBrowser, setShowCategoryBrowser] = useState(false)
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [lastRecordResult, setLastRecordResult] = useState<{ text: string } | null>(null)
   const [storeBonusOverrides, setStoreBonusOverrides] = useState<Record<string, Record<number, boolean>>>({})
   const [expenseDate, setExpenseDate] = useState(todayStr())
+  const [customRate, setCustomRate] = useState('')
+
+  // 2.1 Snap expenseDate when active trip changes
+  useEffect(() => {
+    if (!activeTrip) return
+    const today = todayStr()
+    const maxDate = activeTrip.endDate ?? today
+    if (expenseDate < activeTrip.startDate) {
+      setExpenseDate(activeTrip.startDate)
+    } else if (expenseDate > maxDate) {
+      setExpenseDate(maxDate)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTrip?.id])
+
+  // 4.1/4.3 Persist draft to sessionStorage; reload when trip changes
+  useEffect(() => {
+    const draft = loadDraft(data.activeTripId)
+    setAmount(draft?.amount ?? '')
+    setStore(draft?.store ?? '')
+    setStoreQuery(draft?.store ?? '')
+    setPaymentMethod(draft?.paymentMethod ?? 'apple_pay')
+  }, [data.activeTripId])
+
+  useEffect(() => {
+    saveDraft(data.activeTripId, { amount, store, paymentMethod })
+  }, [amount, store, paymentMethod, data.activeTripId])
 
   useEffect(() => {
     if (!lastRecordResult) return
@@ -48,11 +109,27 @@ export default function CalcPage() {
   const allExpenses = data.trips.flatMap(t => t.expenses)
 
   const exchangeRate = activeTrip?.exchangeRate
+  const effectiveRate = (() => {
+    const parsed = parseFloat(customRate)
+    return !isNaN(parsed) && parsed > 0 ? parsed : exchangeRate?.rate
+  })()
   const parsedAmount = parseInt(amount, 10)
   const validAmount = !isNaN(parsedAmount) && parsedAmount > 0
   const twdAmount = validAmount
-    ? (exchangeRate ? Math.floor(parsedAmount * exchangeRate.rate) : parsedAmount)
+    ? (effectiveRate ? Math.floor(parsedAmount * effectiveRate) : parsedAmount)
     : 0
+
+  // 5.1 Frequent stores from current trip
+  const frequentStores = (() => {
+    const counts: Record<string, number> = {}
+    for (const e of tripExpenses) {
+      if (e.store) counts[e.store] = (counts[e.store] ?? 0) + 1
+    }
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([s]) => s)
+  })()
 
   // Apply store bonus prerequisite overrides to card copies
   const cardsWithOverrides = data.cards.map(card => {
@@ -82,6 +159,23 @@ export default function CalcPage() {
     ? storeNames.filter(n => n.toLowerCase().includes(storeQuery.toLowerCase()))
     : []
 
+  function resetOverrides() {
+    setStoreBonusOverrides({})
+    setPrereqOverrides({})
+  }
+
+  function selectStore(name: string) {
+    setStore(name)
+    setStoreQuery(name)
+    resetOverrides()
+  }
+
+  function clearStore() {
+    setStore('')
+    setStoreQuery('')
+    resetOverrides()
+  }
+
   function handleRecordWithCard(cardId: string) {
     const parsed = parseInt(amount, 10)
     if (!parsed || parsed <= 0) {
@@ -94,7 +188,7 @@ export default function CalcPage() {
     const selectedCard = cardsWithOverrides.find(c => c.id === cardId)!
     const storeName = store || null
 
-    const twd = exchangeRate ? Math.floor(parsed * exchangeRate.rate) : parsed
+    const twd = effectiveRate ? Math.floor(parsed * effectiveRate) : parsed
     const foreignAmount = exchangeRate
       ? { currency: exchangeRate.currency, amount: parsed }
       : undefined
@@ -103,6 +197,10 @@ export default function CalcPage() {
     const { estimatedReward, paymentMethodReward, breakdown } = calcExpenseReward(
       selectedCard, twd, storeName, activeTrip.expenses, paymentMethod, undefined, prereqOverrides[cardId], allExpenses
     )
+
+    // 6.3 Store customRate if overridden
+    const parsedCustomRate = parseFloat(customRate)
+    const customRateValue = !isNaN(parsedCustomRate) && parsedCustomRate > 0 && exchangeRate ? parsedCustomRate : undefined
 
     dispatch({
       type: 'ADD_EXPENSE',
@@ -123,6 +221,7 @@ export default function CalcPage() {
           effectiveRate: selectedAdvice?.effectiveRate ?? 0,
         },
         ...(foreignAmount ? { foreignAmount } : {}),
+        ...(customRateValue !== undefined ? { customRate: customRateValue } : {}),
       },
     })
 
@@ -130,10 +229,13 @@ export default function CalcPage() {
     const toastText = `已記帳！回饋 ${formatBreakdown(estimatedReward, breakdown, storeBonusLabel)}`
     setLastRecordResult({ text: toastText })
 
+    // 4.4 Clear draft after successful record
     setAmount('')
     setStore('')
     setStoreQuery('')
+    setCustomRate('')
     setExpenseDate(todayStr())
+    clearDraft(data.activeTripId)
   }
 
   if (!activeTrip) {
@@ -172,16 +274,16 @@ export default function CalcPage() {
         </div>
       )}
 
-      {/* Header — 試算 only, no expense count */}
+      {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-lg font-semibold text-[#f2e8c9]">試算</h1>
       </div>
 
-      {/* ── Calc form (no onSubmit) ── */}
+      {/* ── Calc form ── */}
       <div className="beast-card rounded-xl p-4 mb-4 space-y-4"
         style={{ background: '#1a1208', border: '1px solid #3a2810' }}>
 
-        {/* Amount input + JPY preview */}
+        {/* Amount input + exchange rate */}
         <div>
           <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">
             {exchangeRate ? `金額（${exchangeRate.currency}）` : '金額（NT$）'}
@@ -194,6 +296,24 @@ export default function CalcPage() {
             placeholder={exchangeRate ? '例：1500（日幣）' : '例：1200'}
             className="w-full border rounded-lg px-3 py-2.5 text-lg focus:outline-none"
           />
+          {/* 6.1 Custom rate input when trip has exchangeRate */}
+          {exchangeRate && (
+            <div className="flex items-center gap-2 mt-1.5">
+              <span className="text-xs" style={{ color: '#9a7040' }}>匯率</span>
+              <input
+                type="number"
+                inputMode="decimal"
+                value={customRate}
+                onChange={e => setCustomRate(e.target.value)}
+                placeholder={String(exchangeRate.rate)}
+                className="w-24 border rounded px-2 py-1 text-xs focus:outline-none"
+                style={{ background: '#141008', borderColor: '#4a3418', color: '#c8a060' }}
+              />
+              <span className="text-xs" style={{ color: '#9a7040' }}>
+                （預設 {exchangeRate.rate}）
+              </span>
+            </div>
+          )}
           {exchangeRate && validAmount && (
             <p className="text-sm mt-1" style={{ color: '#c8a060' }}>
               ≈ NT${twdAmount.toLocaleString()}
@@ -227,6 +347,7 @@ export default function CalcPage() {
                 const q = e.target.value
                 setStoreQuery(q)
                 setStore(q)
+                // 3.2 Note: overrides are NOT reset while typing
               }}
               placeholder="搜尋店家…"
               className="w-full border rounded-lg px-3 py-2 pr-8 text-sm focus:outline-none"
@@ -234,7 +355,7 @@ export default function CalcPage() {
             {storeQuery && (
               <button
                 type="button"
-                onClick={() => { setStoreQuery(''); setStore('') }}
+                onClick={clearStore}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-xs px-1"
                 style={{ color: '#9a7040' }}
                 aria-label="清除"
@@ -245,9 +366,10 @@ export default function CalcPage() {
           </div>
 
           <div className="flex flex-wrap gap-2">
+            {/* 一般消費 chip */}
             <button
               type="button"
-              onClick={() => { setStore(''); setStoreQuery('') }}
+              onClick={clearStore}
               className="px-3 py-1.5 rounded-lg text-sm border transition-all"
               style={store === '' && storeQuery === ''
                 ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a', fontWeight: 600 }
@@ -256,11 +378,27 @@ export default function CalcPage() {
               一般消費
             </button>
 
+            {/* 5.2 Frequent store chips when search is empty */}
+            {storeQuery === '' && frequentStores.map(n => (
+              <button
+                key={`freq-${n}`}
+                type="button"
+                onClick={() => selectStore(n)}
+                className="px-3 py-1.5 rounded-lg text-sm border transition-all"
+                style={store === n
+                  ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a', fontWeight: 600 }
+                  : { background: 'rgba(212,160,23,0.08)', color: '#c8a060', borderColor: '#4a3418' }}
+              >
+                {n}
+              </button>
+            ))}
+
+            {/* Search result chips */}
             {filteredStores.map(n => (
               <button
                 key={n}
                 type="button"
-                onClick={() => { setStore(n); setStoreQuery(n) }}
+                onClick={() => selectStore(n)}
                 className="px-3 py-1.5 rounded-lg text-sm border transition-all"
                 style={store === n && storeQuery === n
                   ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a', fontWeight: 600 }
@@ -317,7 +455,7 @@ export default function CalcPage() {
                                       <button
                                         key={s}
                                         type="button"
-                                        onClick={() => { setStore(s); setStoreQuery(s) }}
+                                        onClick={() => selectStore(s)}
                                         className="px-2.5 py-1 rounded-lg text-xs border transition-all"
                                         style={store === s
                                           ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a', fontWeight: 600 }
@@ -365,7 +503,7 @@ export default function CalcPage() {
           </div>
         </div>
 
-        {/* Card recommendation list with per-card +記帳 button */}
+        {/* Card recommendation list */}
         {data.cards.length > 0 && (
           <div>
             <label className="text-xs text-[#c8a060] block mb-2 uppercase tracking-wider">選擇信用卡（依回饋排序）</label>
@@ -418,7 +556,8 @@ export default function CalcPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-medium text-[#f2e8c9]">{advice.card.name}</span>
-                          {advice.paymentMethodBadge && (
+                          {/* 2.4 Badge only shown when paymentMethod !== 'physical' */}
+                          {advice.paymentMethodBadge && paymentMethod !== 'physical' && (
                             <span className="text-xs px-2 py-0.5 rounded font-medium"
                               style={{ background: 'rgba(74,174,226,0.15)', color: '#4aade2', border: '1px solid rgba(74,174,226,0.3)' }}>
                               {advice.paymentMethodBadge === 'apple_pay' ? 'Apple Pay' : 'Google Pay'}

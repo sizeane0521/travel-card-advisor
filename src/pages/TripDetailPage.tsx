@@ -100,7 +100,7 @@ export default function TripDetailPage({ trip, cards, onBack }: Props) {
                                 : `NT$${e.amount.toLocaleString()}`}
                             </p>
                             <p className="text-xs text-[#c8a060] mt-0.5">
-                              {card?.name ?? e.cardId}
+                              {card?.name ?? '已刪除的卡片'}
                               {e.rewardBreakdown && (
                                 <span className="ml-1 px-1.5 py-0.5 rounded text-[10px]"
                                   style={{ background: 'rgba(212,160,23,0.12)', color: '#d4a017', border: '1px solid rgba(212,160,23,0.2)' }}>
