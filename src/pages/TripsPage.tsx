@@ -16,6 +16,7 @@ export default function TripsPage() {
   const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
   const [startDate, setStartDate] = useState(todayStr())
+  const [endDate, setEndDate] = useState('')
   const [exchangeRateInput, setExchangeRateInput] = useState('')
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null)
 
@@ -38,13 +39,14 @@ export default function TripsPage() {
         id: genId(),
         name: name.trim(),
         startDate,
-        endDate: null,
+        endDate: endDate || null,
         expenses: [],
         ...(exchangeRate ? { exchangeRate } : {}),
       },
     })
     setName('')
     setStartDate(todayStr())
+    setEndDate('')
     setExchangeRateInput('')
     setShowForm(false)
   }
@@ -96,6 +98,16 @@ export default function TripsPage() {
               type="date"
               value={startDate}
               onChange={e => setStartDate(e.target.value)}
+              className="w-full border rounded-lg px-3 py-2 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">結束日期（選填）</label>
+            <input
+              type="date"
+              value={endDate}
+              min={startDate}
+              onChange={e => setEndDate(e.target.value)}
               className="w-full border rounded-lg px-3 py-2 focus:outline-none"
             />
           </div>

@@ -35,6 +35,7 @@ export default function CalcPage() {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [lastRecordResult, setLastRecordResult] = useState<{ text: string } | null>(null)
   const [storeBonusOverrides, setStoreBonusOverrides] = useState<Record<string, Record<number, boolean>>>({})
+  const [expenseDate, setExpenseDate] = useState(todayStr())
 
   useEffect(() => {
     if (!lastRecordResult) return
@@ -111,7 +112,7 @@ export default function CalcPage() {
         amount: twd,
         cardId,
         store: storeName,
-        date: todayStr(),
+        date: expenseDate,
         estimatedReward,
         paymentMethod,
         paymentMethodReward,
@@ -132,6 +133,7 @@ export default function CalcPage() {
     setAmount('')
     setStore('')
     setStoreQuery('')
+    setExpenseDate(todayStr())
   }
 
   if (!activeTrip) {
@@ -198,6 +200,19 @@ export default function CalcPage() {
             </p>
           )}
           {amountError && <p className="text-xs mt-1" style={{ color: '#c0392b' }}>{amountError}</p>}
+        </div>
+
+        {/* Expense date picker */}
+        <div>
+          <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">消費日期</label>
+          <input
+            type="date"
+            value={expenseDate}
+            min={activeTrip.startDate}
+            max={activeTrip.endDate ?? todayStr()}
+            onChange={e => setExpenseDate(e.target.value)}
+            className="w-full border rounded-lg px-3 py-2 focus:outline-none"
+          />
         </div>
 
         {/* store search + chips */}
