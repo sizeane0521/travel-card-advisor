@@ -252,7 +252,7 @@ export default function CalcPage() {
     )
   }
 
-  if (activeTrip.endDate) {
+  if (activeTrip.endDate && activeTrip.endDate <= todayStr()) {
     return (
       <div className="p-4 text-center py-14">
         <svg className="mx-auto mb-3 opacity-30" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#c0392b" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">

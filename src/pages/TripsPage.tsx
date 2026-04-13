@@ -152,7 +152,7 @@ export default function TripsPage() {
             const totalSpend = trip.expenses.reduce((s, e) => s + e.amount, 0)
             const totalReward = trip.expenses.reduce((s, e) => s + e.estimatedReward, 0)
             const isActive = trip.id === data.activeTripId
-            const isEnded = !!trip.endDate
+            const isEnded = !!trip.endDate && trip.endDate <= todayStr()
 
             return (
               <div
