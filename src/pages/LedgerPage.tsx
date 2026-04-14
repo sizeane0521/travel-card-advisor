@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useStore } from '../store/useStore'
 import { calcExpenseReward } from '../lib/rewardCalc'
 import type { Expense } from '../types'
@@ -15,6 +15,14 @@ export default function LedgerPage() {
   const [editAmount, setEditAmount] = useState('')
   const [editDate, setEditDate] = useState('')
   const [editCardId, setEditCardId] = useState('')
+
+  // Card filter state
+  const [filterCardId, setFilterCardId] = useState<string>('all')
+
+  // Reset filter when active trip changes
+  useEffect(() => {
+    setFilterCardId('all')
+  }, [data.activeTripId])
 
   function handleDelete(expenseId: string) {
     if (!activeTrip) return
@@ -208,8 +216,51 @@ export default function LedgerPage() {
       {expenses.length === 0 ? (
         <p className="text-[#9a7040] text-sm text-center py-4">尚無消費記錄</p>
       ) : (
-        <div className="space-y-2">
-          {expenses.map(e => {
+        <>
+          {/* Card filter tabs */}
+          {(() => {
+            const seen = new Set<string>()
+            const filterCardOptions: { cardId: string; name: string }[] = []
+            for (const e of expenses) {
+              if (!seen.has(e.cardId)) {
+                const c = data.cards.find(c => c.id === e.cardId)
+                if (c) {
+                  filterCardOptions.push({ cardId: e.cardId, name: c.name })
+                  seen.add(e.cardId)
+                }
+              }
+            }
+            if (filterCardOptions.length < 2) return null
+            return (
+              <div className="flex gap-2 overflow-x-auto pb-1 mb-3" style={{ scrollbarWidth: 'none' }}>
+                <button
+                  type="button"
+                  onClick={() => setFilterCardId('all')}
+                  className="shrink-0 px-3 py-1.5 rounded-lg text-xs border transition-all whitespace-nowrap"
+                  style={filterCardId === 'all'
+                    ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a', fontWeight: 600 }
+                    : { background: 'transparent', color: '#c8a060', borderColor: '#4a3418' }}
+                >
+                  全部
+                </button>
+                {filterCardOptions.map(({ cardId, name }) => (
+                  <button
+                    key={cardId}
+                    type="button"
+                    onClick={() => setFilterCardId(cardId)}
+                    className="shrink-0 px-3 py-1.5 rounded-lg text-xs border transition-all whitespace-nowrap"
+                    style={filterCardId === cardId
+                      ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a', fontWeight: 600 }
+                      : { background: 'transparent', color: '#c8a060', borderColor: '#4a3418' }}
+                  >
+                    {name}
+                  </button>
+                ))}
+              </div>
+            )
+          })()}
+          <div className="space-y-2">
+          {(filterCardId === 'all' ? expenses : expenses.filter(e => e.cardId === filterCardId)).map(e => {
             const card = data.cards.find(c => c.id === e.cardId)
             const isEditing = editingId === e.id
 
@@ -291,15 +342,26 @@ export default function LedgerPage() {
                       ? `¥${e.foreignAmount.amount.toLocaleString()} (NT$${e.amount.toLocaleString()})`
                       : `NT$${e.amount.toLocaleString()}`}
                   </p>
-                  <p className="text-xs text-[#c8a060]">
-                    {card?.name ?? '已刪除的卡片'}
+                  <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                    <span className="text-xs px-1.5 py-0.5 rounded border"
+                      style={card
+                        ? { borderColor: '#c8901a', color: '#c8a060', background: 'transparent' }
+                        : { borderColor: '#4a3418', color: '#6a5030', background: 'transparent' }}>
+                      {card?.name ?? '已刪除的卡片'}
+                    </span>
+                    {e.paymentMethod && e.paymentMethod !== 'physical' && (
+                      <span className="text-xs px-1.5 py-0.5 rounded font-medium"
+                        style={{ background: 'rgba(74,174,226,0.15)', color: '#4aade2', border: '1px solid rgba(74,174,226,0.3)' }}>
+                        {e.paymentMethod === 'apple_pay' ? 'Apple Pay' : 'Google Pay'}
+                      </span>
+                    )}
                     {e.rewardBreakdown && (
-                      <span className="ml-1 px-1.5 py-0.5 rounded text-[10px]"
+                      <span className="px-1.5 py-0.5 rounded text-[10px]"
                         style={{ background: 'rgba(212,160,23,0.12)', color: '#d4a017', border: '1px solid rgba(212,160,23,0.2)' }}>
                         {e.rewardBreakdown.effectiveRate}%
                       </span>
                     )}
-                  </p>
+                  </div>
                   {e.rewardBreakdown && (e.rewardBreakdown.store > 0 || e.rewardBreakdown.paymentMethod > 0) ? (
                     <p className="text-xs mt-0.5" style={{ color: '#4ade80' }}>
                       回饋 NT${e.estimatedReward.toLocaleString()} = 基本 NT${e.rewardBreakdown.base.toLocaleString()}
@@ -321,7 +383,8 @@ export default function LedgerPage() {
               </div>
             )
           })}
-        </div>
+          </div>
+        </>
       )}
     </div>
   )
