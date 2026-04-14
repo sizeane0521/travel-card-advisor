@@ -147,10 +147,23 @@ export default function CalcPage() {
     ? getSortedRecommendations(cardsWithOverrides, store || null, tripExpenses, paymentMethod, undefined, prereqOverrides, allExpenses)
     : []
 
-  const bestCardId = recommendations.find(a => !a.isFull)?.card.id ?? ''
+  // When validAmount is true, re-sort by actual estimated reward (accounts for caps)
+  const sortedRecommendations = (() => {
+    if (!validAmount) return recommendations
+    const withReward = recommendations.map(advice => ({
+      advice,
+      reward: advice.isFull ? -1 : calcExpenseReward(
+        advice.card, twdAmount, store || null, tripExpenses, paymentMethod, undefined, prereqOverrides[advice.card.id], allExpenses
+      ).estimatedReward,
+    }))
+    withReward.sort((a, b) => b.reward - a.reward)
+    return withReward.map(x => x.advice)
+  })()
+
+  const bestCardId = sortedRecommendations.find(a => !a.isFull)?.card.id ?? ''
   const effectiveSelectedCardId = (() => {
     if (!selectedCardId) return bestCardId
-    const sel = recommendations.find(a => a.card.id === selectedCardId)
+    const sel = sortedRecommendations.find(a => a.card.id === selectedCardId)
     if (!sel || sel.isFull) return bestCardId
     return selectedCardId
   })()
@@ -193,7 +206,7 @@ export default function CalcPage() {
       ? { currency: exchangeRate.currency, amount: parsed }
       : undefined
 
-    const selectedAdvice = recommendations.find(a => a.card.id === cardId)
+    const selectedAdvice = sortedRecommendations.find(a => a.card.id === cardId)
     const { estimatedReward, paymentMethodReward, breakdown } = calcExpenseReward(
       selectedCard, twd, storeName, activeTrip.expenses, paymentMethod, undefined, prereqOverrides[cardId], allExpenses
     )
@@ -529,7 +542,7 @@ export default function CalcPage() {
           style={{ background: '#1a1208', border: '1px solid #3a2810' }}>
           <label className="text-xs text-[#c8a060] block mb-2 uppercase tracking-wider">選擇信用卡（依回饋排序）</label>
             <div className="space-y-2">
-              {recommendations.map((advice, idx) => {
+              {sortedRecommendations.map((advice, idx) => {
                 const isSelected = advice.card.id === effectiveSelectedCardId
                 const isTop = idx === 0 && !advice.isFull
                 const rewardInfo = twdAmount > 0 && !advice.isFull
@@ -551,7 +564,7 @@ export default function CalcPage() {
                 if (!advice.isFull && twdAmount > 0 && breakdown) {
                   if (breakdown.base > 0) detailParts.push(`基本 ${breakdown.base.toLocaleString()}`)
                   if (breakdown.store > 0) detailParts.push(`${storeBonusLabel}加碼 ${breakdown.store.toLocaleString()}`)
-                  if (breakdown.paymentMethod > 0) detailParts.push(`行動支付加碼 ${breakdown.paymentMethod.toLocaleString()}`)
+                  if (breakdown.paymentMethod > 0) detailParts.push(breakdown.paymentMethodCapped ? `行動支付加碼 ${breakdown.paymentMethod.toLocaleString()}（已達上限）` : `行動支付加碼 ${breakdown.paymentMethod.toLocaleString()}`)
                 }
 
                 return (

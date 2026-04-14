@@ -33,6 +33,8 @@ export interface RewardBreakdown {
   paymentMethod: number; // NT$ from payment method bonus
   storeCapped: boolean;  // true if store bonus was truncated by cap
   storeCapRemaining: number; // actual store bonus reward applied when truncated (0 if not capped)
+  /** true if payment method bonus was truncated by monthly cap */
+  paymentMethodCapped: boolean;
 }
 
 export interface CardAdvice {
@@ -285,7 +287,7 @@ export function calcExpenseReward(
     return {
       estimatedReward: 0,
       paymentMethodReward: 0,
-      breakdown: { base: 0, store: 0, paymentMethod: 0, storeCapped: false, storeCapRemaining: 0 },
+      breakdown: { base: 0, store: 0, paymentMethod: 0, storeCapped: false, storeCapRemaining: 0, paymentMethodCapped: false },
     };
   }
 
@@ -326,6 +328,8 @@ export function calcExpenseReward(
   const cappedStore = Math.min(storeBonusReward, cappedBaseAndStore);
   const cappedBase = cappedBaseAndStore - cappedStore;
 
+  const paymentMethodCapped = pmBonus.bonusRate > 0 && pmBonus.bonusReward < Math.floor(amount * pmBonus.bonusRate / 100);
+
   return {
     estimatedReward,
     paymentMethodReward: pmBonus.bonusReward,
@@ -335,6 +339,7 @@ export function calcExpenseReward(
       paymentMethod: pmBonus.bonusReward,
       storeCapped,
       storeCapRemaining,
+      paymentMethodCapped,
     },
   };
 }
