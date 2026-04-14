@@ -286,40 +286,67 @@ code:
 ---
 ### Requirement: Reward total display takes visual priority over breakdown details
 
-Within each card recommendation row in CalcPage, the estimated reward total (e.g. `NT$734`) SHALL be displayed as the primary piece of information using large, high-contrast text. The breakdown details (base, store bonus, payment method bonus line items) SHALL be rendered as secondary information using smaller, lower-contrast text below the total.
+Within each card recommendation row in CalcPage, the layout SHALL be restructured to a horizontal design with the following sections:
 
-Specifically:
-- The reward total SHALL use at minimum `text-lg font-bold` and the primary reward color (`#4ade80`)
-- Each breakdown line item SHALL use `text-xs` and a muted color (e.g. `#9a7040`) and SHALL be displayed on a separate line rather than concatenated into a single long string
-- The rate breakdown (e.g. `基本2.5% + AP1.5% + 店家3%`) SHALL include `%` units on each rate value
+**Left badge (best recommendation only):**
+The card with the highest effective rate that is not full SHALL display a vertical "推薦" badge on the left edge of its card. The badge SHALL be a fixed-width (32px) block with gold/yellow background (`#c8901a`) and "推薦" text in dark color (`#0d0a06`). Cards that are NOT the top recommendation SHALL NOT display this badge; their left edge SHALL be flush with the card border without any offset.
 
-#### Scenario: Reward total displayed prominently when amount is entered
+**First row (card identity and action):**
+A single horizontal row containing, in order:
+1. Card name (`font-medium`, `text-[#f2e8c9]`, `flex-1`)
+2. Payment method badge (Apple Pay / Google Pay — only when `paymentMethod !== 'physical'` and the badge applies)
+3. Effective rate percentage (`text-lg font-bold`, gold color `#d4a017`; `0%` in red `#c0392b` if `isFull`)
+4. "+刷卡" action button (`shrink-0`)
 
-- **WHEN** the user has entered a valid amount and a card's estimated reward is NT$734
-- **THEN** the card row SHALL display "NT$734" in large green text as the dominant reward figure
+**Second row (rates and reward total):**
+A horizontal row containing:
+- Left: Rate breakdown text (`text-xs`, `#c8a060`) showing `基本X% + APX% + 店家X%` with `%` unit on each value (only when payment or store bonus is active)
+- Right: Reward total `NT$XXX` (`text-2xl font-bold`, green `#4ade80`) — only shown when `twdAmount > 0` and `!isFull`
 
-#### Scenario: Breakdown details displayed as secondary lines
+**Divider:** A horizontal separator line (only rendered when breakdown details exist).
 
-- **WHEN** a card has base reward NT$262, store bonus NT$315, and payment method bonus NT$157
-- **THEN** each breakdown item SHALL appear on its own line in small muted text
-- **THEN** the items SHALL NOT be concatenated into a single wrapping string
+**Detail row (below divider):**
+A single line of text (`text-xs`, `#9a7040`) combining all non-zero reward components separated by ` | `:
+- Format: `基本 {N} | {storeBonusLabel}加碼 {N} | 行動支付加碼 {N}`
+- Only components with value > 0 SHALL be included
+- Only shown when `twdAmount > 0` and breakdown exists
 
-#### Scenario: Rate breakdown includes % unit on each value
+**Warnings (unchanged):** Store bonus cap warning and operation warning remain below the detail row.
 
-- **WHEN** a card has `rateBreakdown: { base: 2.5, paymentMethod: 1.5, store: 3 }`
-- **THEN** the rate breakdown text SHALL display "基本2.5% + AP1.5% + 店家3%" (with % on each value)
+**Progress bar:** Spend/reward progress bar for the top card remains below warnings.
+
+#### Scenario: Best card displays vertical recommendation badge
+
+- **WHEN** a card is the highest-reward non-full card in the list
+- **THEN** a gold vertical "推薦" badge SHALL be displayed on the left side of the card
+- **THEN** all other cards in the list SHALL NOT display this badge
+
+#### Scenario: First row shows card name, rate, and button in one line
+
+- **WHEN** a card recommendation row is rendered with `effectiveRate: 7`
+- **THEN** the card name, payment badge, "7%", and "+刷卡" button SHALL all appear on a single horizontal row
+
+#### Scenario: Second row shows rate breakdown left and reward total right
+
+- **WHEN** `twdAmount: 10000` and `breakdown: { base: 250, store: 300, paymentMethod: 150 }`
+- **THEN** the second row SHALL show rate breakdown text on the left (e.g. "基本2.5% + AP1.5% + 店家3%")
+- **THEN** "NT$700" SHALL appear on the right in large green text (`text-2xl font-bold`)
+
+#### Scenario: Detail row shows items separated by pipe
+
+- **WHEN** `breakdown: { base: 250, store: 300, paymentMethod: 150 }` and all values > 0
+- **THEN** the detail row below the divider SHALL show "基本 250 | {store}加碼 300 | 行動支付加碼 150"
+
+#### Scenario: Full card shows 0% without reward total
+
+- **WHEN** a card's monthly cap is fully consumed (`isFull: true`)
+- **THEN** the rate SHALL display "0%" in red
+- **THEN** no reward total or detail rows SHALL be shown
 
 <!-- @trace
-source: ux-amount-display-and-bug-fixes
+source: calc-page-ux-improvements
 updated: 2026-04-14
 code:
   - src/pages/CalcPage.tsx
--->
-
-<!-- @trace
-source: ux-amount-display-and-bug-fixes
-updated: 2026-04-14
-code:
-  - src/pages/CalcPage.tsx
-  - src/pages/TripsPage.tsx
+  - index.html
 -->

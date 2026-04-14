@@ -407,6 +407,15 @@ export default function CalcPage() {
                 {n}
               </button>
             ))}
+            {/* Custom store confirmation chip */}
+            {storeQuery.length > 0 && filteredStores.length === 0 && (
+              <div
+                className="px-3 py-1.5 rounded-lg text-sm border"
+                style={{ background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a', fontWeight: 600 }}
+              >
+                {storeQuery}
+              </div>
+            )}
           </div>
 
           {/* Category browser */}
@@ -526,12 +535,18 @@ export default function CalcPage() {
                 const barPct = showBar
                   ? Math.min(100, Math.round((cap - advice.remainingAmount) / cap * 100))
                   : 0
+                const detailParts: string[] = []
+                if (!advice.isFull && twdAmount > 0 && breakdown) {
+                  if (breakdown.base > 0) detailParts.push(`基本 ${breakdown.base.toLocaleString()}`)
+                  if (breakdown.store > 0) detailParts.push(`${storeBonusLabel}加碼 ${breakdown.store.toLocaleString()}`)
+                  if (breakdown.paymentMethod > 0) detailParts.push(`行動支付加碼 ${breakdown.paymentMethod.toLocaleString()}`)
+                }
 
                 return (
                   <div
                     key={advice.card.id}
                     onClick={() => !advice.isFull && setSelectedCardId(advice.card.id)}
-                    className="rounded-xl p-3 transition-all"
+                    className="rounded-xl overflow-hidden transition-all flex"
                     style={{
                       cursor: advice.isFull ? 'default' : 'pointer',
                       background: isTop && isSelected ? '#2a1f0a' : isSelected ? '#1e1608' : '#141008',
@@ -544,163 +559,161 @@ export default function CalcPage() {
                       opacity: advice.isFull ? 0.45 : 1,
                     }}
                   >
-                    {isTop && (
-                      <div className="mb-1">
-                        <span className="text-xs px-2 py-1 rounded-lg font-bold tracking-wide"
-                          style={{ background: 'linear-gradient(90deg, #ffcc00, #ffea00)', color: '#1a1208', border: '1px solid #ffcc00' }}>
-                          🌟 最佳推薦
+                    {/* Left 推薦 badge — best recommendation only */}
+                    {isTop && !advice.isFull && (
+                      <div className="flex flex-col items-center justify-center shrink-0"
+                        style={{ width: 32, background: '#c8901a' }}>
+                        <span className="text-[11px] font-bold"
+                          style={{ color: '#0d0a06', writingMode: 'vertical-lr', letterSpacing: '0.15em' }}>
+                          推薦
                         </span>
                       </div>
                     )}
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-medium text-[#f2e8c9]">{advice.card.name}</span>
-                          {/* 2.4 Badge only shown when paymentMethod !== 'physical' */}
-                          {advice.paymentMethodBadge && paymentMethod !== 'physical' && (
-                            <span className="text-xs px-2 py-0.5 rounded font-medium"
-                              style={{ background: 'rgba(74,174,226,0.15)', color: '#4aade2', border: '1px solid rgba(74,174,226,0.3)' }}>
-                              {advice.paymentMethodBadge === 'apple_pay' ? 'Apple Pay' : 'Google Pay'}
-                            </span>
-                          )}
-                          {advice.isFull && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded"
-                              style={{ background: 'rgba(139,26,26,0.3)', color: '#c0392b', border: '1px solid #5a1a1a' }}>
-                              本月已滿
-                            </span>
-                          )}
-                        </div>
-                        <div className="mt-0.5">
-                          {advice.isFull ? (
-                            <span className="text-sm" style={{ color: '#c0392b' }}>0%</span>
-                          ) : (
-                            <div>
-                              <span className="text-lg font-bold" style={{ color: '#d4a017' }}>{advice.effectiveRate}%</span>
-                              {(advice.rateBreakdown.paymentMethod > 0 || advice.rateBreakdown.store > 0) && (
-                                <p className="text-xs" style={{ color: '#c8a060' }}>
-                                  基本{advice.rateBreakdown.base}%
-                                  {advice.rateBreakdown.paymentMethod > 0 && ` + ${advice.paymentMethodBadge === 'apple_pay' ? 'AP' : 'GP'}${advice.rateBreakdown.paymentMethod}%`}
-                                  {advice.rateBreakdown.store > 0 && ` + 店家${advice.rateBreakdown.store}%`}
-                                </p>
-                              )}
-                              {twdAmount > 0 && breakdown && (
-                                <div className="mt-0.5">
-                                  <p className="text-lg font-bold" style={{ color: '#4ade80' }}>
-                                    NT${estimated.toLocaleString()}
-                                  </p>
-                                  {(breakdown.store > 0 || breakdown.paymentMethod > 0) && (
-                                    <div className="text-xs" style={{ color: '#9a7040' }}>
-                                      {breakdown.base > 0 && <p>基本 NT${breakdown.base.toLocaleString()}</p>}
-                                      {breakdown.store > 0 && <p>{storeBonusLabel}加碼 NT${breakdown.store.toLocaleString()}</p>}
-                                      {breakdown.paymentMethod > 0 && <p>行動支付加碼 NT${breakdown.paymentMethod.toLocaleString()}</p>}
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
+
+                    {/* Main content */}
+                    <div className="flex-1 min-w-0 p-3">
+                      {/* Row 1: card name + badges + rate + button */}
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-[#f2e8c9] flex-1 min-w-0 truncate">{advice.card.name}</span>
+                        {advice.paymentMethodBadge && paymentMethod !== 'physical' && (
+                          <span className="text-xs px-1.5 py-0.5 rounded font-medium shrink-0"
+                            style={{ background: 'rgba(74,174,226,0.15)', color: '#4aade2', border: '1px solid rgba(74,174,226,0.3)' }}>
+                            {advice.paymentMethodBadge === 'apple_pay' ? 'Apple Pay' : 'Google Pay'}
+                          </span>
+                        )}
+                        {advice.isFull && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded shrink-0"
+                            style={{ background: 'rgba(139,26,26,0.3)', color: '#c0392b', border: '1px solid #5a1a1a' }}>
+                            本月已滿
+                          </span>
+                        )}
+                        <span className="text-lg font-bold shrink-0"
+                          style={{ color: advice.isFull ? '#c0392b' : '#d4a017' }}>
+                          {advice.isFull ? '0%' : `${advice.effectiveRate}%`}
+                        </span>
+                        <button
+                          type="button"
+                          disabled={advice.isFull}
+                          onClick={e => {
+                            e.stopPropagation()
+                            handleRecordWithCard(advice.card.id)
+                          }}
+                          className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all"
+                          style={advice.isFull
+                            ? { background: 'transparent', color: '#3d2e14', borderColor: '#3d2e14', cursor: 'not-allowed' }
+                            : { background: 'transparent', color: '#c8901a', borderColor: '#c8901a' }}
+                        >
+                          +刷卡
+                        </button>
                       </div>
 
-                      {/* Per-card +記帳 button */}
-                      <button
-                        type="button"
-                        disabled={advice.isFull}
-                        onClick={e => {
-                          e.stopPropagation()
-                          handleRecordWithCard(advice.card.id)
-                        }}
-                        className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all"
-                        style={advice.isFull
-                          ? { background: 'transparent', color: '#3d2e14', borderColor: '#3d2e14', cursor: 'not-allowed' }
-                          : { background: 'transparent', color: '#c8901a', borderColor: '#c8901a' }}
-                      >
-                        +刷卡
-                      </button>
-                    </div>
-
-                    {/* Progress bar for top card */}
-                    {showBar && (
-                      <div className="mt-2">
-                        <div className="rounded-full overflow-hidden h-1.5" style={{ background: '#2e2210' }}>
-                          <div className="h-full rounded-full transition-all"
-                            style={{ width: `${barPct}%`, background: 'linear-gradient(90deg, #c8901a, #d4a017)' }} />
+                      {/* Row 2: rate breakdown (left) + reward total (right) */}
+                      {!advice.isFull && (
+                        <div className="flex items-end justify-between mt-1 gap-2">
+                          <p className="text-xs flex-1 min-w-0" style={{ color: '#c8a060' }}>
+                            基本{advice.rateBreakdown.base}%
+                            {advice.rateBreakdown.paymentMethod > 0 && ` + ${advice.paymentMethodBadge === 'apple_pay' ? 'AP' : 'GP'}${advice.rateBreakdown.paymentMethod}%`}
+                            {advice.rateBreakdown.store > 0 && ` + 店家${advice.rateBreakdown.store}%`}
+                          </p>
+                          {twdAmount > 0 && breakdown && (
+                            <span className="text-2xl font-bold shrink-0" style={{ color: '#4ade80' }}>
+                              NT${estimated.toLocaleString()}
+                            </span>
+                          )}
                         </div>
-                        <p className="text-xs mt-1" style={{ color: '#c8a060' }}>
-                          {advice.remainingCapDisplay}
+                      )}
+
+                      {/* Divider + detail line */}
+                      {detailParts.length > 0 && (
+                        <>
+                          <div className="mt-2 mb-1.5" style={{ height: 1, background: '#3d2e14' }} />
+                          <p className="text-xs" style={{ color: '#9a7040' }}>{detailParts.join(' | ')}</p>
+                        </>
+                      )}
+
+                      {/* Progress bar for top card */}
+                      {showBar && (
+                        <div className="mt-2">
+                          <div className="rounded-full overflow-hidden h-1.5" style={{ background: '#2e2210' }}>
+                            <div className="h-full rounded-full transition-all"
+                              style={{ width: `${barPct}%`, background: 'linear-gradient(90deg, #c8901a, #d4a017)' }} />
+                          </div>
+                          <p className="text-xs mt-1" style={{ color: '#c8a060' }}>
+                            {advice.remainingCapDisplay}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Store bonus cap warning */}
+                      {breakdown?.storeCapped && (
+                        <p className="text-xs mt-1.5" style={{ color: '#f59e0b' }}>
+                          ⚠️ {storeBonusLabel}加碼額度本次僅剩 NT${breakdown.storeCapRemaining.toLocaleString()}，總額中已包含此部分
                         </p>
-                      </div>
-                    )}
+                      )}
 
-                    {/* Store bonus cap truncation warning */}
-                    {breakdown?.storeCapped && (
-                      <p className="text-xs mt-1.5" style={{ color: '#f59e0b' }}>
-                        ⚠️ {storeBonusLabel}加碼額度本次僅剩 NT${breakdown.storeCapRemaining.toLocaleString()}，總額中已包含此部分
-                      </p>
-                    )}
+                      {/* Operation warning */}
+                      {opWarning && (
+                        <p className="text-xs mt-1.5" style={{ color: '#f59e0b' }}>
+                          ⚠️ {opWarning}
+                        </p>
+                      )}
 
-                    {/* Operation warning */}
-                    {opWarning && (
-                      <p className="text-xs mt-1.5" style={{ color: '#f59e0b' }}>
-                        ⚠️ {opWarning}
-                      </p>
-                    )}
+                      {/* Prerequisite tier toggles (payment method) */}
+                      {paymentMethod !== 'physical' &&
+                        advice.card.paymentMethodBonus?.methods.includes(paymentMethod) &&
+                        advice.card.paymentMethodBonus.tiers.some(t => t.prerequisite && t.prerequisiteMet !== false) && (
+                        <div className="mt-2 flex flex-wrap gap-1.5" onClick={e => e.stopPropagation()}>
+                          {advice.card.paymentMethodBonus.tiers.map((tier, tierIdx) => {
+                            if (!tier.prerequisite) return null
+                            if (tier.prerequisiteMet === false) return null
+                            const isEnabled = prereqOverrides[advice.card.id]?.[tierIdx] === true
+                            return (
+                              <button
+                                key={tierIdx}
+                                type="button"
+                                onClick={() => setPrereqOverrides(prev => ({
+                                  ...prev,
+                                  [advice.card.id]: { ...(prev[advice.card.id] ?? {}), [tierIdx]: !isEnabled },
+                                }))}
+                                className="text-xs px-2 py-1 rounded-lg border transition-all"
+                                style={isEnabled
+                                  ? { background: 'rgba(74,174,226,0.2)', color: '#4aade2', borderColor: '#4aade2' }
+                                  : { background: 'transparent', color: '#9a7040', borderColor: '#3d2e14' }}
+                              >
+                                {isEnabled ? '✓' : '+'} {tier.prerequisite} (+{tier.rate}%)
+                              </button>
+                            )
+                          })}
+                        </div>
+                      )}
 
-                    {/* Prerequisite tier toggles (payment method) */}
-                    {paymentMethod !== 'physical' &&
-                      advice.card.paymentMethodBonus?.methods.includes(paymentMethod) &&
-                      advice.card.paymentMethodBonus.tiers.some(t => t.prerequisite && t.prerequisiteMet !== false) && (
-                      <div className="mt-2 flex flex-wrap gap-1.5" onClick={e => e.stopPropagation()}>
-                        {advice.card.paymentMethodBonus.tiers.map((tier, tierIdx) => {
-                          if (!tier.prerequisite) return null
-                          if (tier.prerequisiteMet === false) return null
-                          const isEnabled = prereqOverrides[advice.card.id]?.[tierIdx] === true
-                          return (
-                            <button
-                              key={tierIdx}
-                              type="button"
-                              onClick={() => setPrereqOverrides(prev => ({
-                                ...prev,
-                                [advice.card.id]: { ...(prev[advice.card.id] ?? {}), [tierIdx]: !isEnabled },
-                              }))}
-                              className="text-xs px-2 py-1 rounded-lg border transition-all"
-                              style={isEnabled
-                                ? { background: 'rgba(74,174,226,0.2)', color: '#4aade2', borderColor: '#4aade2' }
-                                : { background: 'transparent', color: '#9a7040', borderColor: '#3d2e14' }}
-                            >
-                              {isEnabled ? '✓' : '+'} {tier.prerequisite} (+{tier.rate}%)
-                            </button>
-                          )
-                        })}
-                      </div>
-                    )}
-
-                    {/* Prerequisite toggles (store bonus) */}
-                    {advice.card.storeBonus.some(b => b.prerequisite && b.prerequisiteMet !== false) && (
-                      <div className="mt-2 flex flex-wrap gap-1.5" onClick={e => e.stopPropagation()}>
-                        {advice.card.storeBonus.map((b, bIdx) => {
-                          if (!b.prerequisite) return null
-                          if (b.prerequisiteMet === false) return null
-                          const isEnabled = storeBonusOverrides[advice.card.id]?.[bIdx] === true
-                          return (
-                            <button
-                              key={`sb-${bIdx}`}
-                              type="button"
-                              onClick={() => setStoreBonusOverrides(prev => ({
-                                ...prev,
-                                [advice.card.id]: { ...(prev[advice.card.id] ?? {}), [bIdx]: !isEnabled },
-                              }))}
-                              className="text-xs px-2 py-1 rounded-lg border transition-all"
-                              style={isEnabled
-                                ? { background: 'rgba(212,160,23,0.2)', color: '#d4a017', borderColor: '#d4a017' }
-                                : { background: 'transparent', color: '#9a7040', borderColor: '#3d2e14' }}
-                            >
-                              {isEnabled ? '✓' : '+'} {b.prerequisite} (+{b.rate}%)
-                            </button>
-                          )
-                        })}
-                      </div>
-                    )}
+                      {/* Prerequisite toggles (store bonus) */}
+                      {advice.card.storeBonus.some(b => b.prerequisite && b.prerequisiteMet !== false) && (
+                        <div className="mt-2 flex flex-wrap gap-1.5" onClick={e => e.stopPropagation()}>
+                          {advice.card.storeBonus.map((b, bIdx) => {
+                            if (!b.prerequisite) return null
+                            if (b.prerequisiteMet === false) return null
+                            const isEnabled = storeBonusOverrides[advice.card.id]?.[bIdx] === true
+                            return (
+                              <button
+                                key={`sb-${bIdx}`}
+                                type="button"
+                                onClick={() => setStoreBonusOverrides(prev => ({
+                                  ...prev,
+                                  [advice.card.id]: { ...(prev[advice.card.id] ?? {}), [bIdx]: !isEnabled },
+                                }))}
+                                className="text-xs px-2 py-1 rounded-lg border transition-all"
+                                style={isEnabled
+                                  ? { background: 'rgba(212,160,23,0.2)', color: '#d4a017', borderColor: '#d4a017' }
+                                  : { background: 'transparent', color: '#9a7040', borderColor: '#3d2e14' }}
+                              >
+                                {isEnabled ? '✓' : '+'} {b.prerequisite} (+{b.rate}%)
+                              </button>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )
               })}
