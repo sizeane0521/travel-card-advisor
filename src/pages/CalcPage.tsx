@@ -512,10 +512,13 @@ export default function CalcPage() {
           </div>
         </div>
 
-        {/* Card recommendation list */}
-        {data.cards.length > 0 && (
-          <div>
-            <label className="text-xs text-[#c8a060] block mb-2 uppercase tracking-wider">選擇信用卡（依回饋排序）</label>
+      </div>
+
+      {/* ── Card recommendation list ── */}
+      {data.cards.length > 0 && (
+        <div className="beast-card rounded-xl p-4 mb-4"
+          style={{ background: '#1a1208', border: '1px solid #3a2810' }}>
+          <label className="text-xs text-[#c8a060] block mb-2 uppercase tracking-wider">選擇信用卡（依回饋排序）</label>
             <div className="space-y-2">
               {recommendations.map((advice, idx) => {
                 const isSelected = advice.card.id === effectiveSelectedCardId
@@ -546,7 +549,7 @@ export default function CalcPage() {
                   <div
                     key={advice.card.id}
                     onClick={() => !advice.isFull && setSelectedCardId(advice.card.id)}
-                    className="rounded-xl overflow-hidden transition-all flex"
+                    className="rounded-xl overflow-hidden transition-all relative"
                     style={{
                       cursor: advice.isFull ? 'default' : 'pointer',
                       background: isTop && isSelected ? '#2a1f0a' : isSelected ? '#1e1608' : '#141008',
@@ -559,14 +562,11 @@ export default function CalcPage() {
                       opacity: advice.isFull ? 0.45 : 1,
                     }}
                   >
-                    {/* Left 推薦 badge — best recommendation only */}
+                    {/* 推薦 badge — absolute positioned top-left corner */}
                     {isTop && !advice.isFull && (
-                      <div className="flex flex-col items-center justify-center shrink-0"
-                        style={{ width: 32, background: '#c8901a' }}>
-                        <span className="text-[11px] font-bold"
-                          style={{ color: '#0d0a06', writingMode: 'vertical-lr', letterSpacing: '0.15em' }}>
-                          推薦
-                        </span>
+                      <div className="absolute top-0 left-0 px-1.5 py-0.5 rounded-br-lg text-[10px] font-bold"
+                        style={{ background: '#c8901a', color: '#0d0a06' }}>
+                        推薦
                       </div>
                     )}
 
@@ -658,69 +658,13 @@ export default function CalcPage() {
                         </p>
                       )}
 
-                      {/* Prerequisite tier toggles (payment method) */}
-                      {paymentMethod !== 'physical' &&
-                        advice.card.paymentMethodBonus?.methods.includes(paymentMethod) &&
-                        advice.card.paymentMethodBonus.tiers.some(t => t.prerequisite && t.prerequisiteMet !== false) && (
-                        <div className="mt-2 flex flex-wrap gap-1.5" onClick={e => e.stopPropagation()}>
-                          {advice.card.paymentMethodBonus.tiers.map((tier, tierIdx) => {
-                            if (!tier.prerequisite) return null
-                            if (tier.prerequisiteMet === false) return null
-                            const isEnabled = prereqOverrides[advice.card.id]?.[tierIdx] === true
-                            return (
-                              <button
-                                key={tierIdx}
-                                type="button"
-                                onClick={() => setPrereqOverrides(prev => ({
-                                  ...prev,
-                                  [advice.card.id]: { ...(prev[advice.card.id] ?? {}), [tierIdx]: !isEnabled },
-                                }))}
-                                className="text-xs px-2 py-1 rounded-lg border transition-all"
-                                style={isEnabled
-                                  ? { background: 'rgba(74,174,226,0.2)', color: '#4aade2', borderColor: '#4aade2' }
-                                  : { background: 'transparent', color: '#9a7040', borderColor: '#3d2e14' }}
-                              >
-                                {isEnabled ? '✓' : '+'} {tier.prerequisite} (+{tier.rate}%)
-                              </button>
-                            )
-                          })}
-                        </div>
-                      )}
-
-                      {/* Prerequisite toggles (store bonus) */}
-                      {advice.card.storeBonus.some(b => b.prerequisite && b.prerequisiteMet !== false) && (
-                        <div className="mt-2 flex flex-wrap gap-1.5" onClick={e => e.stopPropagation()}>
-                          {advice.card.storeBonus.map((b, bIdx) => {
-                            if (!b.prerequisite) return null
-                            if (b.prerequisiteMet === false) return null
-                            const isEnabled = storeBonusOverrides[advice.card.id]?.[bIdx] === true
-                            return (
-                              <button
-                                key={`sb-${bIdx}`}
-                                type="button"
-                                onClick={() => setStoreBonusOverrides(prev => ({
-                                  ...prev,
-                                  [advice.card.id]: { ...(prev[advice.card.id] ?? {}), [bIdx]: !isEnabled },
-                                }))}
-                                className="text-xs px-2 py-1 rounded-lg border transition-all"
-                                style={isEnabled
-                                  ? { background: 'rgba(212,160,23,0.2)', color: '#d4a017', borderColor: '#d4a017' }
-                                  : { background: 'transparent', color: '#9a7040', borderColor: '#3d2e14' }}
-                              >
-                                {isEnabled ? '✓' : '+'} {b.prerequisite} (+{b.rate}%)
-                              </button>
-                            )
-                          })}
-                        </div>
-                      )}
                     </div>
                   </div>
                 )
               })}
             </div>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }

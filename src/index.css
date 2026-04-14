@@ -33,6 +33,10 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 0 0 2px rgba(200, 144, 26, 0.2) !important;
   outline: none !important;
 }
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+}
 select option {
   background: #1a1208;
   color: #f2e8c9;
