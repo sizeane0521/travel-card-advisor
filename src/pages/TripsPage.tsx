@@ -3,6 +3,16 @@ import { useStore } from '../store/useStore'
 import type { Trip } from '../types'
 import TripDetailPage from './TripDetailPage'
 
+type CurrencyCode = 'JPY' | 'KRW' | 'EUR' | 'USD' | 'THB'
+
+const POPULAR_CURRENCIES: { code: CurrencyCode; flag: string; label: string }[] = [
+  { code: 'JPY', flag: '🇯🇵', label: '日本' },
+  { code: 'KRW', flag: '🇰🇷', label: '韓國' },
+  { code: 'EUR', flag: '🇪🇺', label: '歐洲' },
+  { code: 'USD', flag: '🇺🇸', label: '美國' },
+  { code: 'THB', flag: '🇹🇭', label: '泰國' },
+]
+
 function genId(): string {
   return `trip-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
 }
@@ -17,7 +27,10 @@ export default function TripsPage() {
   const [name, setName] = useState('')
   const [startDate, setStartDate] = useState(todayStr())
   const [endDate, setEndDate] = useState('')
+  const [selectedCurrency, setSelectedCurrency] = useState<CurrencyCode | null>(null)
   const [exchangeRateInput, setExchangeRateInput] = useState('')
+  const [allRates, setAllRates] = useState<Record<string, number> | null>(null)
+  const [fetchStatus, setFetchStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null)
 
   const sortedTrips = [...data.trips].reverse()
@@ -26,12 +39,47 @@ export default function TripsPage() {
     return <TripDetailPage trip={selectedTrip} cards={data.cards} onBack={() => setSelectedTrip(null)} />
   }
 
+  async function fetchRates(): Promise<Record<string, number> | null> {
+    setFetchStatus('loading')
+    try {
+      const res = await fetch('https://open.er-api.com/v6/latest/TWD')
+      if (!res.ok) throw new Error('non-2xx')
+      const json = await res.json()
+      const rates = json.rates as Record<string, number>
+      setAllRates(rates)
+      setFetchStatus('idle')
+      return rates
+    } catch {
+      setFetchStatus('error')
+      return null
+    }
+  }
+
+  async function handleCurrencySelect(code: CurrencyCode) {
+    if (selectedCurrency === code) {
+      setSelectedCurrency(null)
+      setExchangeRateInput('')
+      return
+    }
+    setSelectedCurrency(code)
+
+    let rates = allRates
+    if (!rates) {
+      rates = await fetchRates()
+    }
+
+    if (rates && rates[code]) {
+      const rate = Math.round((1 / rates[code]) * 10000) / 10000
+      setExchangeRateInput(String(rate))
+    }
+  }
+
   function handleCreate(e: React.FormEvent) {
     e.preventDefault()
     if (!name.trim()) return
     const rateNum = parseFloat(exchangeRateInput)
-    const exchangeRate = !isNaN(rateNum) && rateNum > 0
-      ? { currency: 'JPY', rate: rateNum }
+    const exchangeRate = selectedCurrency && !isNaN(rateNum) && rateNum > 0
+      ? { currency: selectedCurrency, rate: rateNum }
       : undefined
     dispatch({
       type: 'ADD_TRIP',
@@ -48,6 +96,9 @@ export default function TripsPage() {
     setStartDate(todayStr())
     setEndDate('')
     setExchangeRateInput('')
+    setSelectedCurrency(null)
+    setAllRates(null)
+    setFetchStatus('idle')
     setShowForm(false)
   }
 
@@ -112,15 +163,41 @@ export default function TripsPage() {
             />
           </div>
           <div>
-            <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">JPY 匯率（選填）</label>
+            <label className="text-xs text-[#c8a060] block mb-2 uppercase tracking-wider">幣別（選填）</label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {POPULAR_CURRENCIES.map(({ code, flag }) => (
+                <button
+                  key={code}
+                  type="button"
+                  onClick={() => handleCurrencySelect(code)}
+                  className="px-3 py-1.5 rounded-lg text-sm border transition-all"
+                  style={selectedCurrency === code
+                    ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a', fontWeight: 600 }
+                    : { background: 'transparent', color: '#c8a060', borderColor: '#4a3418' }}
+                >
+                  {flag} {code}
+                </button>
+              ))}
+              {fetchStatus === 'loading' && (
+                <span className="text-xs self-center" style={{ color: '#9a7040' }}>載入中…</span>
+              )}
+            </div>
+            {fetchStatus === 'error' && (
+              <p className="text-xs mb-2" style={{ color: '#c0392b' }}>無法取得最新匯率，請手動輸入</p>
+            )}
+            <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">匯率（1 外幣 = NT$?）</label>
             <input
               type="number"
-              step="0.001"
+              step="0.0001"
               value={exchangeRateInput}
               onChange={e => setExchangeRateInput(e.target.value)}
-              placeholder="例：0.22（1 JPY = NT$0.22）"
-              className="w-full border rounded-lg px-3 py-2 focus:outline-none"
+              disabled={fetchStatus === 'loading'}
+              placeholder={selectedCurrency ? `例：0.2136（1 ${selectedCurrency} = NT$0.2136）` : '先選擇幣別'}
+              className="w-full border rounded-lg px-3 py-2 focus:outline-none disabled:opacity-50"
             />
+            {fetchStatus === 'idle' && selectedCurrency && exchangeRateInput && (
+              <p className="text-xs mt-1" style={{ color: '#9a7040' }}>已自動帶入最新參考匯率，可手動調整</p>
+            )}
           </div>
           <div className="flex gap-2">
             <button type="submit"
