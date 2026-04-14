@@ -192,6 +192,11 @@ export default function TripsPage() {
                   <span className="text-[#c8a060]">回饋 <span className="font-medium" style={{ color: '#4ade80' }}>NT${totalReward.toLocaleString()}</span></span>
                   <span className="text-[#9a7040]">{trip.expenses.length} 筆</span>
                 </div>
+                {trip.exchangeRate && (
+                  <p className="text-xs mt-1" style={{ color: '#9a7040' }}>
+                    {trip.exchangeRate.currency} · 匯率 {trip.exchangeRate.rate}
+                  </p>
+                )}
 
                 <div className="mt-3 flex gap-2" onClick={e => e.stopPropagation()}>
                   {!isActive && !isEnded && (

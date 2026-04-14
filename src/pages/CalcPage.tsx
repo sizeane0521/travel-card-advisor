@@ -182,7 +182,7 @@ export default function CalcPage() {
       setAmountError('請輸入正整數金額')
       return
     }
-    if (!activeTrip || activeTrip.endDate) return
+    if (!activeTrip || (activeTrip.endDate && activeTrip.endDate <= todayStr())) return
 
     setAmountError('')
     const selectedCard = cardsWithOverrides.find(c => c.id === cardId)!
@@ -315,7 +315,7 @@ export default function CalcPage() {
             </div>
           )}
           {exchangeRate && validAmount && (
-            <p className="text-sm mt-1" style={{ color: '#c8a060' }}>
+            <p className="text-2xl font-bold mt-1" style={{ color: '#f2e8c9' }}>
               ≈ NT${twdAmount.toLocaleString()}
             </p>
           )}
@@ -578,15 +578,24 @@ export default function CalcPage() {
                               <span className="text-lg font-bold" style={{ color: '#d4a017' }}>{advice.effectiveRate}%</span>
                               {(advice.rateBreakdown.paymentMethod > 0 || advice.rateBreakdown.store > 0) && (
                                 <p className="text-xs" style={{ color: '#c8a060' }}>
-                                  基本{advice.rateBreakdown.base}
-                                  {advice.rateBreakdown.paymentMethod > 0 && ` + ${advice.paymentMethodBadge === 'apple_pay' ? 'AP' : 'GP'}${advice.rateBreakdown.paymentMethod}`}
-                                  {advice.rateBreakdown.store > 0 && ` + 店家${advice.rateBreakdown.store}`}
+                                  基本{advice.rateBreakdown.base}%
+                                  {advice.rateBreakdown.paymentMethod > 0 && ` + ${advice.paymentMethodBadge === 'apple_pay' ? 'AP' : 'GP'}${advice.rateBreakdown.paymentMethod}%`}
+                                  {advice.rateBreakdown.store > 0 && ` + 店家${advice.rateBreakdown.store}%`}
                                 </p>
                               )}
                               {twdAmount > 0 && breakdown && (
-                                <p className="text-xs" style={{ color: '#4ade80' }}>
-                                  {formatBreakdown(estimated, breakdown, storeBonusLabel)}
-                                </p>
+                                <div className="mt-0.5">
+                                  <p className="text-lg font-bold" style={{ color: '#4ade80' }}>
+                                    NT${estimated.toLocaleString()}
+                                  </p>
+                                  {(breakdown.store > 0 || breakdown.paymentMethod > 0) && (
+                                    <div className="text-xs" style={{ color: '#9a7040' }}>
+                                      {breakdown.base > 0 && <p>基本 NT${breakdown.base.toLocaleString()}</p>}
+                                      {breakdown.store > 0 && <p>{storeBonusLabel}加碼 NT${breakdown.store.toLocaleString()}</p>}
+                                      {breakdown.paymentMethod > 0 && <p>行動支付加碼 NT${breakdown.paymentMethod.toLocaleString()}</p>}
+                                    </div>
+                                  )}
+                                </div>
                               )}
                             </div>
                           )}
