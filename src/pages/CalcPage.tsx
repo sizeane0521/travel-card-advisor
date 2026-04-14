@@ -335,7 +335,11 @@ export default function CalcPage() {
           />
         </div>
 
-        {/* store search + chips */}
+      </div>
+
+      {/* ── Store section ── */}
+      <div className="beast-card rounded-xl p-4 mb-4"
+        style={{ background: '#1a1208', border: '1px solid #3a2810' }}>
         <div>
           <label className="text-xs text-[#c8a060] block mb-2 uppercase tracking-wider">店家</label>
 
@@ -366,17 +370,19 @@ export default function CalcPage() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            {/* 一般消費 chip */}
-            <button
-              type="button"
-              onClick={clearStore}
-              className="px-3 py-1.5 rounded-lg text-sm border transition-all"
-              style={store === '' && storeQuery === ''
-                ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a', fontWeight: 600 }
-                : { background: 'transparent', color: '#c8a060', borderColor: '#4a3418' }}
-            >
-              一般消費
-            </button>
+            {/* 一般消費 chip — hidden while typing */}
+            {storeQuery.length === 0 && (
+              <button
+                type="button"
+                onClick={clearStore}
+                className="px-3 py-1.5 rounded-lg text-sm border transition-all"
+                style={store === '' && storeQuery === ''
+                  ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a', fontWeight: 600 }
+                  : { background: 'transparent', color: '#c8a060', borderColor: '#4a3418' }}
+              >
+                一般消費
+              </button>
+            )}
 
             {/* 5.2 Frequent store chips when search is empty */}
             {storeQuery === '' && frequentStores.map(n => (
@@ -488,7 +494,11 @@ export default function CalcPage() {
           })()}
         </div>
 
-        {/* Payment method selector */}
+      </div>
+
+      {/* ── Payment method section ── */}
+      <div className="beast-card rounded-xl p-4 mb-4"
+        style={{ background: '#1a1208', border: '1px solid #3a2810' }}>
         <div>
           <label className="text-xs text-[#c8a060] block mb-2 uppercase tracking-wider">付款方式</label>
           <div className="flex gap-2">
@@ -511,7 +521,6 @@ export default function CalcPage() {
             ))}
           </div>
         </div>
-
       </div>
 
       {/* ── Card recommendation list ── */}
@@ -548,10 +557,10 @@ export default function CalcPage() {
                 return (
                   <div
                     key={advice.card.id}
-                    onClick={() => !advice.isFull && setSelectedCardId(advice.card.id)}
+                    onClick={() => !advice.isFull && validAmount && setSelectedCardId(advice.card.id)}
                     className="rounded-xl overflow-hidden transition-all relative"
                     style={{
-                      cursor: advice.isFull ? 'default' : 'pointer',
+                      cursor: advice.isFull || !validAmount ? 'default' : 'pointer',
                       background: isTop && isSelected ? '#2a1f0a' : isSelected ? '#1e1608' : '#141008',
                       border: isTop && isSelected
                         ? '2px solid #ffcc00'
@@ -559,7 +568,7 @@ export default function CalcPage() {
                           ? '1px solid #c8901a'
                           : '1px solid #3d2e14',
                       boxShadow: isSelected ? '0 0 12px rgba(255,204,0,0.25)' : 'none',
-                      opacity: advice.isFull ? 0.45 : 1,
+                      opacity: advice.isFull ? 0.45 : !validAmount ? 0.4 : 1,
                     }}
                   >
                     {/* 推薦 badge — absolute positioned top-left corner */}
@@ -593,13 +602,13 @@ export default function CalcPage() {
                         </span>
                         <button
                           type="button"
-                          disabled={advice.isFull}
+                          disabled={advice.isFull || !validAmount}
                           onClick={e => {
                             e.stopPropagation()
                             handleRecordWithCard(advice.card.id)
                           }}
                           className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all"
-                          style={advice.isFull
+                          style={advice.isFull || !validAmount
                             ? { background: 'transparent', color: '#3d2e14', borderColor: '#3d2e14', cursor: 'not-allowed' }
                             : { background: 'transparent', color: '#c8901a', borderColor: '#c8901a' }}
                         >
@@ -612,7 +621,7 @@ export default function CalcPage() {
                         <div className="flex items-end justify-between mt-1 gap-2">
                           <p className="text-xs flex-1 min-w-0" style={{ color: '#c8a060' }}>
                             基本{advice.rateBreakdown.base}%
-                            {advice.rateBreakdown.paymentMethod > 0 && ` + ${advice.paymentMethodBadge === 'apple_pay' ? 'AP' : 'GP'}${advice.rateBreakdown.paymentMethod}%`}
+                            {advice.rateBreakdown.paymentMethod > 0 && ` + 行動支付${advice.rateBreakdown.paymentMethod}%`}
                             {advice.rateBreakdown.store > 0 && ` + 店家${advice.rateBreakdown.store}%`}
                           </p>
                           {twdAmount > 0 && breakdown && (
