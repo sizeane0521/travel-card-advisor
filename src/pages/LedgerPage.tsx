@@ -111,6 +111,7 @@ export default function LedgerPage() {
         const rows: BonusRow[] = []
 
         for (const card of data.cards) {
+          if (filterCardId !== 'all' && card.id !== filterCardId) continue
           for (const b of card.storeBonus) {
             if (b.cap <= 0) continue
             if (b.prerequisite !== undefined && b.prerequisiteMet !== true) continue
@@ -362,14 +363,18 @@ export default function LedgerPage() {
                       </span>
                     )}
                   </div>
-                  {e.rewardBreakdown && (e.rewardBreakdown.store > 0 || e.rewardBreakdown.paymentMethod > 0) ? (
-                    <p className="text-xs mt-0.5" style={{ color: '#4ade80' }}>
-                      回饋 NT${e.estimatedReward.toLocaleString()} = 基本 NT${e.rewardBreakdown.base.toLocaleString()}
-                      {e.rewardBreakdown.store > 0 && ` + ${e.store ?? ''}加碼 NT$${e.rewardBreakdown.store.toLocaleString()}`}
-                      {e.rewardBreakdown.paymentMethod > 0 && ` + 行動支付加碼 NT$${e.rewardBreakdown.paymentMethod.toLocaleString()}`}
-                    </p>
-                  ) : (
-                    <p className="text-xs mt-0.5" style={{ color: '#4ade80' }}>回饋 NT${e.estimatedReward.toLocaleString()}</p>
+                  <p className="text-xs mt-0.5" style={{ color: '#4ade80' }}>回饋 NT${e.estimatedReward.toLocaleString()}</p>
+                  {e.rewardBreakdown && (e.rewardBreakdown.store > 0 || e.rewardBreakdown.paymentMethod > 0) && (
+                    <>
+                      <div className="mt-1 mb-0.5" style={{ height: 1, background: '#3d2e14' }} />
+                      <p className="text-xs" style={{ color: '#9a7040' }}>
+                        {[
+                          `基本 NT$${e.rewardBreakdown.base.toLocaleString()}`,
+                          e.rewardBreakdown.store > 0 ? `${e.store ?? '店家'}加碼 NT$${e.rewardBreakdown.store.toLocaleString()}` : null,
+                          e.rewardBreakdown.paymentMethod > 0 ? `行動支付加碼 NT$${e.rewardBreakdown.paymentMethod.toLocaleString()}` : null,
+                        ].filter(Boolean).join(' | ')}
+                      </p>
+                    </>
                   )}
                 </div>
                 <button
