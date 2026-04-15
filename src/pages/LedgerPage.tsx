@@ -104,6 +104,49 @@ export default function LedgerPage() {
         <span className="text-sm text-[#c8a060]">本次旅程 {activeTrip.expenses.length} 筆</span>
       </div>
 
+      {/* ── Card filter tabs ── */}
+      {(() => {
+        const seen = new Set<string>()
+        const filterCardOptions: { cardId: string; name: string }[] = []
+        for (const e of expenses) {
+          if (!seen.has(e.cardId)) {
+            const c = data.cards.find(c => c.id === e.cardId)
+            if (c) {
+              filterCardOptions.push({ cardId: e.cardId, name: c.name })
+              seen.add(e.cardId)
+            }
+          }
+        }
+        if (filterCardOptions.length < 2) return null
+        return (
+          <div className="flex gap-2 overflow-x-auto pb-1 mb-4" style={{ scrollbarWidth: 'none' }}>
+            <button
+              type="button"
+              onClick={() => setFilterCardId('all')}
+              className="shrink-0 px-3 py-1.5 rounded-lg text-xs border transition-all whitespace-nowrap"
+              style={filterCardId === 'all'
+                ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a', fontWeight: 600 }
+                : { background: 'transparent', color: '#c8a060', borderColor: '#4a3418' }}
+            >
+              全部
+            </button>
+            {filterCardOptions.map(({ cardId, name }) => (
+              <button
+                key={cardId}
+                type="button"
+                onClick={() => setFilterCardId(cardId)}
+                className="shrink-0 px-3 py-1.5 rounded-lg text-xs border transition-all whitespace-nowrap"
+                style={filterCardId === cardId
+                  ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a', fontWeight: 600 }
+                  : { background: 'transparent', color: '#c8a060', borderColor: '#4a3418' }}
+              >
+                {name}
+              </button>
+            ))}
+          </div>
+        )
+      })()}
+
       {/* ── Bonus status panel ── */}
       {(() => {
         const currentMonth = new Date().toISOString().slice(0, 7)
@@ -218,48 +261,6 @@ export default function LedgerPage() {
         <p className="text-[#9a7040] text-sm text-center py-4">尚無消費記錄</p>
       ) : (
         <>
-          {/* Card filter tabs */}
-          {(() => {
-            const seen = new Set<string>()
-            const filterCardOptions: { cardId: string; name: string }[] = []
-            for (const e of expenses) {
-              if (!seen.has(e.cardId)) {
-                const c = data.cards.find(c => c.id === e.cardId)
-                if (c) {
-                  filterCardOptions.push({ cardId: e.cardId, name: c.name })
-                  seen.add(e.cardId)
-                }
-              }
-            }
-            if (filterCardOptions.length < 2) return null
-            return (
-              <div className="flex gap-2 overflow-x-auto pb-1 mb-3" style={{ scrollbarWidth: 'none' }}>
-                <button
-                  type="button"
-                  onClick={() => setFilterCardId('all')}
-                  className="shrink-0 px-3 py-1.5 rounded-lg text-xs border transition-all whitespace-nowrap"
-                  style={filterCardId === 'all'
-                    ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a', fontWeight: 600 }
-                    : { background: 'transparent', color: '#c8a060', borderColor: '#4a3418' }}
-                >
-                  全部
-                </button>
-                {filterCardOptions.map(({ cardId, name }) => (
-                  <button
-                    key={cardId}
-                    type="button"
-                    onClick={() => setFilterCardId(cardId)}
-                    className="shrink-0 px-3 py-1.5 rounded-lg text-xs border transition-all whitespace-nowrap"
-                    style={filterCardId === cardId
-                      ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a', fontWeight: 600 }
-                      : { background: 'transparent', color: '#c8a060', borderColor: '#4a3418' }}
-                  >
-                    {name}
-                  </button>
-                ))}
-              </div>
-            )
-          })()}
           <div className="space-y-2">
           {(filterCardId === 'all' ? expenses : expenses.filter(e => e.cardId === filterCardId)).map(e => {
             const card = data.cards.find(c => c.id === e.cardId)
