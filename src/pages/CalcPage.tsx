@@ -383,20 +383,6 @@ export default function CalcPage() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            {/* 一般消費 chip — hidden while typing */}
-            {storeQuery.length === 0 && (
-              <button
-                type="button"
-                onClick={clearStore}
-                className="px-3 py-1.5 rounded-lg text-sm border transition-all"
-                style={store === '' && storeQuery === ''
-                  ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a', fontWeight: 600 }
-                  : { background: 'transparent', color: '#c8a060', borderColor: '#4a3418' }}
-              >
-                一般消費
-              </button>
-            )}
-
             {/* 5.2 Frequent store chips when search is empty */}
             {storeQuery === '' && frequentStores.map(n => (
               <button

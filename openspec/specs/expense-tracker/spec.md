@@ -681,9 +681,9 @@ The confirmation chip SHALL only appear when ALL of the following conditions are
 1. `storeQuery` is non-empty
 2. The filtered bonus store results are empty (no matching bonus stores found)
 
-When the confirmation chip is visible, it SHALL display the text of `storeQuery` directly (e.g., if the user typed "無印良品", the chip shows "無印良品"). The "一般消費" chip SHALL NOT appear in the active/selected style at the same time (their conditions are mutually exclusive).
+When the confirmation chip is visible, it SHALL display the text of `storeQuery` directly (e.g., if the user typed "無印良品", the chip shows "無印良品").
 
-If the user clears the input, the confirmation chip SHALL disappear and "一般消費" SHALL return to its default unselected state.
+If the user clears the input, the confirmation chip SHALL disappear and the chips area SHALL return to showing frequent store chips (or be empty if no frequent stores exist).
 
 #### Scenario: Custom store chip appears for non-bonus store
 
@@ -695,7 +695,7 @@ If the user clears the input, the confirmation chip SHALL disappear and "一般�
 
 - **WHEN** the user clears the store input field
 - **THEN** the custom store confirmation chip SHALL no longer be visible
-- **THEN** the "一般消費" chip SHALL return to its unselected appearance
+- **THEN** the chips area SHALL revert to showing frequent store chips (or be empty)
 
 #### Scenario: Chip does not appear when bonus store matches
 
@@ -703,9 +703,8 @@ If the user clears the input, the confirmation chip SHALL disappear and "一般�
 - **THEN** no custom store confirmation chip SHALL appear (the matched bonus store chip appears instead)
 
 <!-- @trace
-source: calc-page-ux-improvements
-updated: 2026-04-14
+source: remove-general-expense-chip
+updated: 2026-04-16
 code:
   - src/pages/CalcPage.tsx
-  - index.html
 -->

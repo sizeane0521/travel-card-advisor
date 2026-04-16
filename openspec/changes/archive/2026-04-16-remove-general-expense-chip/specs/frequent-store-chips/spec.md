@@ -1,10 +1,4 @@
-# frequent-store-chips Specification
-
-## Purpose
-
-Display quick-access chips for the most frequently used stores in the current active trip when the store search input is empty.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Frequent store chips shown when search is empty
 
@@ -31,10 +25,3 @@ When the current trip has no expenses or all expenses have `store: null`, no fre
 - **WHEN** the active trip has zero expense records
 - **THEN** no frequent store chips SHALL appear
 - **THEN** the chips area SHALL be empty when search is empty
-
-<!-- @trace
-source: remove-general-expense-chip
-updated: 2026-04-16
-code:
-  - src/pages/CalcPage.tsx
--->
