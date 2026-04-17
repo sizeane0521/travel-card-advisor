@@ -10,6 +10,14 @@ export default function LedgerPage() {
   const expenses = activeTrip ? [...activeTrip.expenses].reverse() : []
   const allExpenses = data.trips.flatMap(t => t.expenses)
 
+  // Group expenses by date for date chip strip
+  const byDay: Record<string, typeof expenses> = {}
+  for (const e of expenses) {
+    if (!byDay[e.date]) byDay[e.date] = []
+    byDay[e.date].push(e)
+  }
+  const sortedDays = Object.keys(byDay).sort().reverse()
+
   // 7.1 Edit state
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editAmount, setEditAmount] = useState('')
@@ -19,9 +27,14 @@ export default function LedgerPage() {
   // Card filter state
   const [filterCardId, setFilterCardId] = useState<string>('all')
 
-  // Reset filter when active trip changes
+  // Date chip state — '' means auto-select most recent day
+  const [selectedDay, setSelectedDay] = useState<string>('')
+  const effectiveDay = (selectedDay && byDay[selectedDay]) ? selectedDay : (sortedDays[0] ?? '')
+
+  // Reset filters when active trip changes
   useEffect(() => {
     setFilterCardId('all')
+    setSelectedDay('')
   }, [data.activeTripId])
 
   function handleDelete(expenseId: string) {
@@ -261,8 +274,30 @@ export default function LedgerPage() {
         <p className="text-[#9a7040] text-sm text-center py-4">尚無消費記錄</p>
       ) : (
         <>
+          {/* Date chip strip */}
+          <div className="overflow-x-auto flex gap-2 pb-2 mb-3 -mx-1 px-1">
+            {[...sortedDays].reverse().map(date => {
+              const isSelected = date === effectiveDay
+              const d = new Date(date + 'T00:00:00')
+              return (
+                <button
+                  key={date}
+                  onClick={() => setSelectedDay(date)}
+                  className="flex flex-col items-center shrink-0 rounded-full w-12 py-1.5 transition-colors"
+                  style={isSelected
+                    ? { background: '#d4a017', color: '#1a1208' }
+                    : { border: '1px solid #d4a017', color: '#d4a017', background: 'transparent' }
+                  }
+                >
+                  <span className="text-sm font-semibold leading-none">{d.getDate()}</span>
+                  <span className="text-[10px] mt-0.5 leading-none">{d.toLocaleDateString('zh-TW', { weekday: 'short' })}</span>
+                </button>
+              )
+            })}
+          </div>
+
           <div className="space-y-2">
-          {(filterCardId === 'all' ? expenses : expenses.filter(e => e.cardId === filterCardId)).map(e => {
+          {(filterCardId === 'all' ? (byDay[effectiveDay] ?? []) : (byDay[effectiveDay] ?? []).filter(e => e.cardId === filterCardId)).map(e => {
             const card = data.cards.find(c => c.id === e.cardId)
             const isEditing = editingId === e.id
 
