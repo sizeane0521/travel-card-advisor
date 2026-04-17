@@ -74,7 +74,7 @@ export default function TripDetailPage({ trip, cards, onBack }: Props) {
         <>
           {/* Date chip strip */}
           <div className="overflow-x-auto flex gap-2 pb-2 mb-3 -mx-1 px-1">
-            {sortedDays.map(date => {
+            {[...sortedDays].reverse().map(date => {
               const isSelected = date === selectedDay
               return (
                 <button
