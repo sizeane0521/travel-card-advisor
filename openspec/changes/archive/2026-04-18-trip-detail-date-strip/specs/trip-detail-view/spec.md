@@ -1,10 +1,4 @@
-# trip-detail-view Specification
-
-## Purpose
-
-Define the trip detail view that shows per-trip statistics and daily expense breakdown when a user taps a trip card in the trip history list.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Trip detail view with daily expense breakdown
 
@@ -73,10 +67,3 @@ When a trip has no expenses, the detail view SHALL display a message "此旅程�
 - **WHEN** user taps a trip card that has zero expenses
 - **THEN** the detail view SHALL display "此旅程尚無消費記錄"
 - **THEN** the date chip strip SHALL NOT be rendered
-
-<!-- @trace
-source: trip-detail-date-strip
-updated: 2026-04-18
-code:
-  - src/pages/TripDetailPage.tsx
--->
