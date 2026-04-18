@@ -160,6 +160,30 @@ export default function LedgerPage() {
         )
       })()}
 
+      {/* ── Date chip strip ── */}
+      {sortedDays.length > 0 && (
+        <div className="overflow-x-auto flex gap-2 pb-2 mb-4 -mx-1 px-1">
+          {[...sortedDays].reverse().map(date => {
+            const isSelected = date === effectiveDay
+            const d = new Date(date + 'T00:00:00')
+            return (
+              <button
+                key={date}
+                onClick={() => setSelectedDay(date)}
+                className="flex flex-col items-center shrink-0 rounded-full w-12 py-1.5 transition-colors"
+                style={isSelected
+                  ? { background: '#d4a017', color: '#1a1208' }
+                  : { border: '1px solid #d4a017', color: '#d4a017', background: 'transparent' }
+                }
+              >
+                <span className="text-sm font-semibold leading-none">{d.getDate()}</span>
+                <span className="text-[10px] mt-0.5 leading-none">{d.toLocaleDateString('zh-TW', { weekday: 'short' })}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
       {/* ── Bonus status panel ── */}
       {(() => {
         const currentMonth = new Date().toISOString().slice(0, 7)
@@ -274,28 +298,6 @@ export default function LedgerPage() {
         <p className="text-[#9a7040] text-sm text-center py-4">尚無消費記錄</p>
       ) : (
         <>
-          {/* Date chip strip */}
-          <div className="overflow-x-auto flex gap-2 pb-2 mb-3 -mx-1 px-1">
-            {[...sortedDays].reverse().map(date => {
-              const isSelected = date === effectiveDay
-              const d = new Date(date + 'T00:00:00')
-              return (
-                <button
-                  key={date}
-                  onClick={() => setSelectedDay(date)}
-                  className="flex flex-col items-center shrink-0 rounded-full w-12 py-1.5 transition-colors"
-                  style={isSelected
-                    ? { background: '#d4a017', color: '#1a1208' }
-                    : { border: '1px solid #d4a017', color: '#d4a017', background: 'transparent' }
-                  }
-                >
-                  <span className="text-sm font-semibold leading-none">{d.getDate()}</span>
-                  <span className="text-[10px] mt-0.5 leading-none">{d.toLocaleDateString('zh-TW', { weekday: 'short' })}</span>
-                </button>
-              )
-            })}
-          </div>
-
           <div className="space-y-2">
           {(filterCardId === 'all' ? (byDay[effectiveDay] ?? []) : (byDay[effectiveDay] ?? []).filter(e => e.cardId === filterCardId)).map(e => {
             const card = data.cards.find(c => c.id === e.cardId)
