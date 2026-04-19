@@ -34,6 +34,7 @@ export default function TripsPage() {
   const [fetchStatus, setFetchStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null)
   const [nameError, setNameError] = useState(false)
+  const [currencyError, setCurrencyError] = useState(false)
   const [rateError, setRateError] = useState(false)
 
   // Edit trip state
@@ -118,9 +119,12 @@ export default function TripsPage() {
 
   function handleCreate(e: React.FormEvent) {
     e.preventDefault()
-    if (!name.trim()) { setNameError(true); return }
     const rateNum = parseFloat(exchangeRateInput)
-    if (selectedCurrency && (isNaN(rateNum) || rateNum <= 0)) { setRateError(true); return }
+    let hasError = false
+    if (!name.trim()) { setNameError(true); hasError = true }
+    if (!selectedCurrency) { setCurrencyError(true); hasError = true }
+    if (selectedCurrency && (isNaN(rateNum) || rateNum <= 0)) { setRateError(true); hasError = true }
+    if (hasError) return
     const exchangeRate = selectedCurrency && !isNaN(rateNum) && rateNum > 0
       ? { currency: selectedCurrency, rate: rateNum }
       : undefined
@@ -137,6 +141,7 @@ export default function TripsPage() {
     })
     setName('')
     setNameError(false)
+    setCurrencyError(false)
     setRateError(false)
     setStartDate(todayStr())
     setEndDate('')
@@ -179,7 +184,7 @@ export default function TripsPage() {
           className="beast-card rounded-xl p-4 mb-4 space-y-3"
           style={{ background: '#1a1208', border: '1px solid #c8901a', boxShadow: '0 0 16px rgba(200,144,26,0.12)' }}>
           <div>
-            <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">旅程名稱</label>
+            <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">旅程名稱 <span style={{ color: '#ff5555' }}>*</span></label>
             <input
               value={name}
               onChange={e => { setName(e.target.value); if (nameError) setNameError(false) }}
@@ -191,7 +196,7 @@ export default function TripsPage() {
             {nameError && <p className="text-xs mt-1" style={{ color: '#ff5555' }}>請輸入旅程名稱</p>}
           </div>
           <div>
-            <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">開始日期</label>
+            <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">開始日期 <span style={{ color: '#ff5555' }}>*</span></label>
             <DatePicker
               value={startDate}
               onChange={setStartDate}
@@ -208,17 +213,17 @@ export default function TripsPage() {
             />
           </div>
           <div>
-            <label className="text-xs text-[#c8a060] block mb-2 uppercase tracking-wider">幣別（選填）</label>
+            <label className="text-xs text-[#c8a060] block mb-2 uppercase tracking-wider">幣別 <span style={{ color: '#ff5555' }}>*</span></label>
             <div className="flex flex-wrap gap-2 mb-2">
               {POPULAR_CURRENCIES.map(({ code, flag }) => (
                 <button
                   key={code}
                   type="button"
-                  onClick={() => handleCurrencySelect(code)}
+                  onClick={() => { handleCurrencySelect(code); if (currencyError) setCurrencyError(false) }}
                   className="px-3 py-1.5 rounded-lg text-sm border transition-all"
                   style={selectedCurrency === code
                     ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a', fontWeight: 600 }
-                    : { background: 'transparent', color: '#c8a060', borderColor: '#4a3418' }}
+                    : { background: 'transparent', color: currencyError ? '#ff5555' : '#c8a060', borderColor: currencyError ? '#ff5555' : '#4a3418' }}
                 >
                   {flag} {code}
                 </button>
@@ -227,10 +232,11 @@ export default function TripsPage() {
                 <span className="text-xs self-center" style={{ color: '#9a7040' }}>載入中…</span>
               )}
             </div>
+            {currencyError && <p className="text-xs mb-2" style={{ color: '#ff5555' }}>請選擇幣別</p>}
             {fetchStatus === 'error' && (
               <p className="text-xs mb-2" style={{ color: '#ff5555' }}>無法取得最新匯率，請手動輸入</p>
             )}
-            <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">匯率（1 外幣 = NT$?）</label>
+            <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">匯率（1 外幣 = NT$?）<span style={{ color: '#ff5555' }}>*</span></label>
             <input
               type="number"
               step="0.0001"
