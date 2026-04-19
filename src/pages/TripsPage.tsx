@@ -34,6 +34,17 @@ export default function TripsPage() {
   const [fetchStatus, setFetchStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null)
   const [nameError, setNameError] = useState(false)
+  const [rateError, setRateError] = useState(false)
+
+  // Edit trip state
+  const [editingTripId, setEditingTripId] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editStartDate, setEditStartDate] = useState('')
+  const [editEndDate, setEditEndDate] = useState('')
+  const [editCurrency, setEditCurrency] = useState<CurrencyCode | null>(null)
+  const [editRate, setEditRate] = useState('')
+  const [editNameError, setEditNameError] = useState(false)
+  const [editRateError, setEditRateError] = useState(false)
 
   const sortedTrips = [...data.trips].reverse()
 
@@ -76,10 +87,40 @@ export default function TripsPage() {
     }
   }
 
+  function startEditTrip(trip: Trip) {
+    setEditingTripId(trip.id)
+    setEditName(trip.name)
+    setEditStartDate(trip.startDate)
+    setEditEndDate(trip.endDate ?? '')
+    setEditCurrency((trip.exchangeRate?.currency as CurrencyCode) ?? null)
+    setEditRate(trip.exchangeRate ? String(trip.exchangeRate.rate) : '')
+    setEditNameError(false)
+    setEditRateError(false)
+  }
+
+  function cancelEditTrip() {
+    setEditingTripId(null)
+  }
+
+  function saveEditTrip(trip: Trip) {
+    if (!editName.trim()) { setEditNameError(true); return }
+    const rateNum = parseFloat(editRate)
+    if (editCurrency && (isNaN(rateNum) || rateNum <= 0)) { setEditRateError(true); return }
+    const exchangeRate = editCurrency && !isNaN(rateNum) && rateNum > 0
+      ? { currency: editCurrency, rate: rateNum }
+      : undefined
+    dispatch({
+      type: 'UPDATE_TRIP',
+      trip: { ...trip, name: editName.trim(), startDate: editStartDate, endDate: editEndDate || null, exchangeRate },
+    })
+    setEditingTripId(null)
+  }
+
   function handleCreate(e: React.FormEvent) {
     e.preventDefault()
     if (!name.trim()) { setNameError(true); return }
     const rateNum = parseFloat(exchangeRateInput)
+    if (selectedCurrency && (isNaN(rateNum) || rateNum <= 0)) { setRateError(true); return }
     const exchangeRate = selectedCurrency && !isNaN(rateNum) && rateNum > 0
       ? { currency: selectedCurrency, rate: rateNum }
       : undefined
@@ -96,6 +137,7 @@ export default function TripsPage() {
     })
     setName('')
     setNameError(false)
+    setRateError(false)
     setStartDate(todayStr())
     setEndDate('')
     setExchangeRateInput('')
@@ -193,12 +235,14 @@ export default function TripsPage() {
               type="number"
               step="0.0001"
               value={exchangeRateInput}
-              onChange={e => setExchangeRateInput(e.target.value)}
+              onChange={e => { setExchangeRateInput(e.target.value); if (rateError) setRateError(false) }}
               disabled={fetchStatus === 'loading'}
               placeholder={selectedCurrency ? `例：0.2136（1 ${selectedCurrency} = NT$0.2136）` : '先選擇幣別'}
               className="w-full border rounded-lg px-3 py-2 focus:outline-none disabled:opacity-50"
+              style={rateError ? { borderColor: '#ff5555', boxShadow: '0 0 0 2px rgba(255,85,85,0.2)' } : undefined}
             />
-            {fetchStatus === 'idle' && selectedCurrency && exchangeRateInput && (
+            {rateError && <p className="text-xs mt-1" style={{ color: '#ff5555' }}>請輸入有效匯率</p>}
+            {!rateError && fetchStatus === 'idle' && selectedCurrency && exchangeRateInput && (
               <p className="text-xs mt-1" style={{ color: '#9a7040' }}>已自動帶入最新參考匯率，可手動調整</p>
             )}
           </div>
@@ -278,7 +322,7 @@ export default function TripsPage() {
                   </p>
                 )}
 
-                <div className="mt-3 flex gap-2" onClick={e => e.stopPropagation()}>
+                <div className="mt-3 flex gap-2 flex-wrap" onClick={e => e.stopPropagation()}>
                   {!isActive && !isEnded && (
                     <button
                       onClick={() => handleSetActive(trip.id)}
@@ -298,6 +342,13 @@ export default function TripsPage() {
                     </button>
                   )}
                   <button
+                    onClick={() => startEditTrip(trip)}
+                    className="text-xs px-3 py-1 rounded border transition-colors"
+                    style={{ borderColor: '#3d2e14', color: '#c8a060' }}
+                  >
+                    編輯
+                  </button>
+                  <button
                     onClick={() => handleDelete(trip.id)}
                     className="text-xs px-3 py-1 rounded border transition-colors"
                     style={{ borderColor: '#5a1a1a', color: '#ff5555' }}
@@ -305,6 +356,62 @@ export default function TripsPage() {
                     刪除
                   </button>
                 </div>
+
+                {/* Inline edit form */}
+                {editingTripId === trip.id && (
+                  <div className="mt-3 space-y-2 pt-3" style={{ borderTop: '1px solid #3d2e14' }} onClick={e => e.stopPropagation()}>
+                    <div>
+                      <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">旅程名稱</label>
+                      <input
+                        value={editName}
+                        onChange={e => { setEditName(e.target.value); if (editNameError) setEditNameError(false) }}
+                        className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none"
+                        style={{ background: '#141008', borderColor: editNameError ? '#ff5555' : '#4a3418', color: '#f2e8c9' }}
+                      />
+                      {editNameError && <p className="text-xs mt-0.5" style={{ color: '#ff5555' }}>請輸入旅程名稱</p>}
+                    </div>
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">開始日期</label>
+                        <DatePicker value={editStartDate} onChange={setEditStartDate} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none" />
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">結束日期</label>
+                        <DatePicker value={editEndDate} onChange={setEditEndDate} min={editStartDate} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none" />
+                      </div>
+                    </div>
+                    {trip.exchangeRate && (
+                      <div>
+                        <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">匯率（1 {editCurrency} = NT$?）</label>
+                        <input
+                          type="number"
+                          step="0.0001"
+                          value={editRate}
+                          onChange={e => { setEditRate(e.target.value); if (editRateError) setEditRateError(false) }}
+                          className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none"
+                          style={{ background: '#141008', borderColor: editRateError ? '#ff5555' : '#4a3418', color: '#f2e8c9' }}
+                        />
+                        {editRateError && <p className="text-xs mt-0.5" style={{ color: '#ff5555' }}>請輸入有效匯率</p>}
+                      </div>
+                    )}
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        onClick={() => saveEditTrip(trip)}
+                        className="flex-1 rounded-lg py-1.5 text-xs font-semibold"
+                        style={{ background: 'linear-gradient(135deg, #c8901a, #d4a017)', color: '#0d0a06' }}
+                      >
+                        儲存
+                      </button>
+                      <button
+                        onClick={cancelEditTrip}
+                        className="flex-1 rounded-lg py-1.5 text-xs border"
+                        style={{ borderColor: '#3a2810', color: '#c8a060' }}
+                      >
+                        取消
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )
           })}
