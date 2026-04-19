@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useStore } from '../store/useStore'
 import { calcExpenseReward } from '../lib/rewardCalc'
 import type { Expense } from '../types'
+import DatePicker from '../components/DatePicker'
 
 export default function LedgerPage() {
   const { data, dispatch } = useStore()
@@ -324,14 +325,12 @@ export default function LedgerPage() {
                     </div>
                     <div>
                       <label className="text-xs text-[#9a7040] block mb-0.5">日期</label>
-                      <input
-                        type="date"
+                      <DatePicker
                         value={editDate}
                         min={activeTrip.startDate}
                         max={activeTrip.endDate ?? new Date().toISOString().slice(0, 10)}
-                        onChange={ev => setEditDate(ev.target.value)}
+                        onChange={setEditDate}
                         className="w-full border rounded px-2 py-1.5 text-sm focus:outline-none"
-                        style={{ background: '#141008', borderColor: '#4a3418', color: '#f2e8c9' }}
                       />
                     </div>
                     <div>

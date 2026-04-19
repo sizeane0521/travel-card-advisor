@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import type { Card, StoreBonus, PaymentMethodBonus, PaymentMethodBonusTier } from '../types'
+import DatePicker from './DatePicker'
 import { importCardFromUrl, importCardFromHtml, importCardFromImage } from '../lib/cardImport'
 import type { CardImportResult } from '../lib/cardImport'
 import { useApiProvider } from '../lib/apiProviderContext'
@@ -993,13 +994,11 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
           <div className="flex gap-2">
             <div className="flex-1">
               <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">活動開始日（選填）</label>
-              <input value={validFrom} onChange={e => setValidFrom(e.target.value)}
-                type="date" className={inputClass} />
+              <DatePicker value={validFrom} onChange={setValidFrom} className={inputClass} />
             </div>
             <div className="flex-1">
               <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">活動結束日（選填）</label>
-              <input value={validTo} onChange={e => setValidTo(e.target.value)}
-                type="date" className={inputClass} />
+              <DatePicker value={validTo} onChange={setValidTo} className={inputClass} />
             </div>
           </div>
         </div>

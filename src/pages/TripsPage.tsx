@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useStore } from '../store/useStore'
 import type { Trip } from '../types'
 import TripDetailPage from './TripDetailPage'
+import DatePicker from '../components/DatePicker'
 
 type CurrencyCode = 'JPY' | 'KRW' | 'EUR' | 'USD' | 'THB'
 
@@ -145,20 +146,18 @@ export default function TripsPage() {
           </div>
           <div>
             <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">開始日期</label>
-            <input
-              type="date"
+            <DatePicker
               value={startDate}
-              onChange={e => setStartDate(e.target.value)}
+              onChange={setStartDate}
               className="w-full border rounded-lg px-3 py-2 focus:outline-none"
             />
           </div>
           <div>
             <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">結束日期（選填）</label>
-            <input
-              type="date"
+            <DatePicker
               value={endDate}
               min={startDate}
-              onChange={e => setEndDate(e.target.value)}
+              onChange={setEndDate}
               className="w-full border rounded-lg px-3 py-2 focus:outline-none"
             />
           </div>

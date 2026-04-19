@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useStore } from '../store/useStore'
 import { getAllStoreNames, getSortedRecommendations, calcExpenseReward } from '../lib/rewardCalc'
 import type { RewardBreakdown } from '../lib/rewardCalc'
+import DatePicker from '../components/DatePicker'
 
 function todayStr(): string {
   return new Date().toISOString().slice(0, 10)
@@ -338,12 +339,11 @@ export default function CalcPage() {
         {/* Expense date picker */}
         <div>
           <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">消費日期</label>
-          <input
-            type="date"
+          <DatePicker
             value={expenseDate}
             min={activeTrip.startDate}
             max={activeTrip.endDate ?? todayStr()}
-            onChange={e => setExpenseDate(e.target.value)}
+            onChange={setExpenseDate}
             className="w-full border rounded-lg px-3 py-2 focus:outline-none"
           />
         </div>
