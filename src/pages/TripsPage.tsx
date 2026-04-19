@@ -143,10 +143,10 @@ export default function TripsPage() {
               onChange={e => { setName(e.target.value); if (nameError) setNameError(false) }}
               placeholder="例：2026 六月 日本"
               className="w-full border rounded-lg px-3 py-2 focus:outline-none"
-              style={nameError ? { borderColor: '#c0392b', boxShadow: '0 0 0 2px rgba(192,57,43,0.2)' } : undefined}
+              style={nameError ? { borderColor: '#ff5555', boxShadow: '0 0 0 2px rgba(192,57,43,0.2)' } : undefined}
               autoFocus
             />
-            {nameError && <p className="text-xs mt-1" style={{ color: '#c0392b' }}>請輸入旅程名稱</p>}
+            {nameError && <p className="text-xs mt-1" style={{ color: '#ff5555' }}>請輸入旅程名稱</p>}
           </div>
           <div>
             <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">開始日期</label>
@@ -186,7 +186,7 @@ export default function TripsPage() {
               )}
             </div>
             {fetchStatus === 'error' && (
-              <p className="text-xs mb-2" style={{ color: '#c0392b' }}>無法取得最新匯率，請手動輸入</p>
+              <p className="text-xs mb-2" style={{ color: '#ff5555' }}>無法取得最新匯率，請手動輸入</p>
             )}
             <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">匯率（1 外幣 = NT$?）</label>
             <input
@@ -292,7 +292,7 @@ export default function TripsPage() {
                     <button
                       onClick={() => handleEnd(trip.id)}
                       className="text-xs px-3 py-1 rounded border transition-colors"
-                      style={{ borderColor: '#5a1a1a', color: '#c0392b' }}
+                      style={{ borderColor: '#5a1a1a', color: '#ff5555' }}
                     >
                       結束旅程
                     </button>
@@ -300,7 +300,7 @@ export default function TripsPage() {
                   <button
                     onClick={() => handleDelete(trip.id)}
                     className="text-xs px-3 py-1 rounded border transition-colors"
-                    style={{ borderColor: '#5a1a1a', color: '#c0392b' }}
+                    style={{ borderColor: '#5a1a1a', color: '#ff5555' }}
                   >
                     刪除
                   </button>
