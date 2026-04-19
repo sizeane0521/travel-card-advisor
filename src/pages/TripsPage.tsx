@@ -33,6 +33,7 @@ export default function TripsPage() {
   const [allRates, setAllRates] = useState<Record<string, number> | null>(null)
   const [fetchStatus, setFetchStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null)
+  const [nameError, setNameError] = useState(false)
 
   const sortedTrips = [...data.trips].reverse()
 
@@ -77,7 +78,7 @@ export default function TripsPage() {
 
   function handleCreate(e: React.FormEvent) {
     e.preventDefault()
-    if (!name.trim()) return
+    if (!name.trim()) { setNameError(true); return }
     const rateNum = parseFloat(exchangeRateInput)
     const exchangeRate = selectedCurrency && !isNaN(rateNum) && rateNum > 0
       ? { currency: selectedCurrency, rate: rateNum }
@@ -94,6 +95,7 @@ export default function TripsPage() {
       },
     })
     setName('')
+    setNameError(false)
     setStartDate(todayStr())
     setEndDate('')
     setExchangeRateInput('')
@@ -138,11 +140,13 @@ export default function TripsPage() {
             <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">旅程名稱</label>
             <input
               value={name}
-              onChange={e => setName(e.target.value)}
+              onChange={e => { setName(e.target.value); if (nameError) setNameError(false) }}
               placeholder="例：2026 六月 日本"
               className="w-full border rounded-lg px-3 py-2 focus:outline-none"
+              style={nameError ? { borderColor: '#c0392b', boxShadow: '0 0 0 2px rgba(192,57,43,0.2)' } : undefined}
               autoFocus
             />
+            {nameError && <p className="text-xs mt-1" style={{ color: '#c0392b' }}>請輸入旅程名稱</p>}
           </div>
           <div>
             <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">開始日期</label>
