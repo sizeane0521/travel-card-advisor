@@ -25,7 +25,12 @@ function hashCardColor(name: string): string {
   return CARD_GRADIENTS[hash % CARD_GRADIENTS.length]
 }
 
-export default function SettingsPage() {
+interface Props {
+  theme: 'dark' | 'light'
+  onToggleTheme: () => void
+}
+
+export default function SettingsPage({ theme, onToggleTheme }: Props) {
   const { data, dispatch } = useStore()
   const { provider, apiKey, setProvider, setApiKey } = useApiProvider()
   const [editingCard, setEditingCard] = useState<Card | null>(null)
@@ -69,38 +74,86 @@ export default function SettingsPage() {
   if (editingCard) return <CardForm card={editingCard} onSave={handleSave} onCancel={() => setEditingCard(null)} />
   if (showNewForm) return <CardForm card={null} onSave={handleSave} onCancel={() => setShowNewForm(false)} />
 
+  const isDark = theme === 'dark'
+
   return (
     <div className="p-4 max-w-lg mx-auto">
-      <h1 className="text-lg font-semibold text-[#f2e8c9] mb-4">卡片設定</h1>
+      <h1 className="text-lg font-semibold mb-4" style={{ color: 'var(--color-text-base)' }}>卡片設定</h1>
+
+      {/* ── Theme toggle ── */}
+      <div className="glass-card p-4 mb-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xs font-semibold uppercase tracking-widest mb-0.5" style={{ color: 'var(--color-accent)' }}>外觀主題</h2>
+            <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+              {isDark ? '🌙 深色模式' : '☀️ 淺色模式'}
+            </p>
+          </div>
+          {/* iOS-style toggle switch */}
+          <button
+            role="switch"
+            aria-checked={!isDark}
+            onClick={onToggleTheme}
+            className="relative shrink-0 transition-all duration-300"
+            style={{
+              width: '52px',
+              height: '28px',
+              borderRadius: '14px',
+              background: isDark ? 'rgba(255,255,255,0.15)' : 'var(--color-secondary)',
+              border: 'none',
+              padding: 0,
+              cursor: 'pointer',
+            }}
+          >
+            <span
+              className="absolute transition-all duration-300"
+              style={{
+                top: '3px',
+                left: isDark ? '3px' : '25px',
+                width: '22px',
+                height: '22px',
+                borderRadius: '50%',
+                background: isDark ? 'var(--color-text-muted)' : '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '12px',
+                lineHeight: 1,
+              }}
+            >
+              {isDark ? '🌙' : '☀️'}
+            </span>
+          </button>
+        </div>
+      </div>
 
       {/* ── AI provider settings ── */}
-      <div className="beast-card rounded-xl p-4 mb-4"
-        style={{ background: '#141008', border: '1px solid #3d2e14' }}>
+      <div className="glass-card p-4 mb-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xs font-semibold text-[#c8a060] uppercase tracking-widest">自動匯入設定</h2>
+          <h2 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-accent)' }}>自動匯入設定</h2>
           {apiKey && !apiPanelOpen ? (
             <div className="flex items-center gap-2">
-              <span className="text-xs" style={{ color: '#4ade80' }}>
+              <span className="text-xs" style={{ color: 'var(--color-success)' }}>
                 {provider === 'gemini' ? 'Gemini' : 'Claude'} · <span className="font-mono">{'•'.repeat(Math.max(0, apiKey.length - 4))}{apiKey.slice(-4)}</span>
               </span>
-              <button onClick={() => setApiPanelOpen(true)} className="text-xs text-[#9a7040]">修改</button>
+              <button onClick={() => setApiPanelOpen(true)} className="text-xs" style={{ color: 'var(--color-text-muted)' }}>修改</button>
             </div>
           ) : (
-            apiKey && <button onClick={() => setApiPanelOpen(false)} className="text-xs text-[#9a7040]">收起</button>
+            apiKey && <button onClick={() => setApiPanelOpen(false)} className="text-xs" style={{ color: 'var(--color-text-muted)' }}>收起</button>
           )}
         </div>
 
         {(!apiKey || apiPanelOpen) && (
           <div className="mt-3">
-            <label className="text-xs text-[#9a7040] block mb-1.5">AI 服務商</label>
+            <label className="text-xs block mb-1.5" style={{ color: 'var(--color-text-muted)' }}>AI 服務商</label>
             <div className="flex gap-2 mb-3">
               <button
                 type="button"
                 onClick={() => { setProvider('gemini'); setApiKey('') }}
                 className="flex-1 py-2 rounded text-sm border font-medium transition-all"
                 style={provider === 'gemini'
-                  ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a' }
-                  : { background: 'transparent', color: '#c8a060', borderColor: '#3a2810' }}
+                  ? { background: 'var(--color-secondary)', color: '#fff', borderColor: 'var(--color-secondary)' }
+                  : { background: 'transparent', color: 'var(--color-text-muted)', borderColor: 'var(--color-border)' }}
               >
                 Gemini
               </button>
@@ -109,14 +162,14 @@ export default function SettingsPage() {
                 onClick={() => { setProvider('claude'); setApiKey('') }}
                 className="flex-1 py-2 rounded text-sm border font-medium transition-all"
                 style={provider === 'claude'
-                  ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a' }
-                  : { background: 'transparent', color: '#c8a060', borderColor: '#3a2810' }}
+                  ? { background: 'var(--color-secondary)', color: '#fff', borderColor: 'var(--color-secondary)' }
+                  : { background: 'transparent', color: 'var(--color-text-muted)', borderColor: 'var(--color-border)' }}
               >
                 Claude
               </button>
             </div>
 
-            <p className="text-xs text-[#9a7040] mb-3">
+            <p className="text-xs mb-3" style={{ color: 'var(--color-text-muted)' }}>
               {provider === 'gemini'
                 ? 'Gemini 提供免費方案，至 aistudio.google.com 申請 API Key'
                 : '至 console.anthropic.com 申請 Claude API Key'}
@@ -124,11 +177,11 @@ export default function SettingsPage() {
 
             {apiKey ? (
               <div className="flex items-center justify-between rounded-lg px-3 py-2"
-                style={{ background: '#0f1a0e', border: '1px solid #1a4a28' }}>
-                <p className="text-xs" style={{ color: '#4ade80' }}>
+                style={{ background: 'rgba(0,185,181,0.08)', border: '1px solid rgba(0,185,181,0.25)' }}>
+                <p className="text-xs" style={{ color: 'var(--color-success)' }}>
                   已設定：<span className="font-mono">{'•'.repeat(Math.max(0, apiKey.length - 4))}{apiKey.slice(-4)}</span>
                 </p>
-                <button onClick={() => { setApiKey(''); setApiPanelOpen(false) }} className="text-xs text-[#9a7040]">清除</button>
+                <button onClick={() => { setApiKey(''); setApiPanelOpen(false) }} className="text-xs" style={{ color: 'var(--color-text-muted)' }}>清除</button>
               </div>
             ) : (
               <div className="flex gap-2">
@@ -144,24 +197,27 @@ export default function SettingsPage() {
                   onClick={handleSaveKey}
                   disabled={!keyInput.trim()}
                   className="text-sm px-4 py-2 rounded font-medium transition-all disabled:opacity-30"
-                  style={{ background: '#3d2e14', color: '#c8901a', border: '1px solid #3a2810' }}
+                  style={{ background: 'var(--color-secondary)', color: '#fff', border: 'none' }}
                 >
                   設定
                 </button>
               </div>
             )}
-            <p className="text-xs text-[#3a2810] mt-2">Key 僅存於本次瀏覽器工作階段，重新整理或關閉分頁後自動清除。</p>
+            <p className="text-xs mt-2" style={{ color: 'var(--color-border)' }}>Key 僅存於本次瀏覽器工作階段，重新整理或關閉分頁後自動清除。</p>
           </div>
         )}
       </div>
 
       {/* ── Card list ── */}
       <div className="flex items-center justify-between mb-2">
-        <h2 className="text-sm font-semibold text-[#d4a017] pl-3 uppercase tracking-widest" style={{ borderLeft: '3px solid #c8901a' }}>信用卡列表</h2>
+        <h2 className="text-sm font-semibold pl-3 uppercase tracking-widest"
+          style={{ color: 'var(--color-secondary)', borderLeft: '3px solid var(--color-secondary)' }}>
+          信用卡列表
+        </h2>
         <button
           onClick={() => setShowNewForm(true)}
           className="text-sm font-medium transition-colors"
-          style={{ color: '#c8901a' }}
+          style={{ color: 'var(--color-secondary)' }}
         >
           ＋ 新增卡片
         </button>
@@ -169,12 +225,13 @@ export default function SettingsPage() {
 
       {data.cards.length === 0 ? (
         <div className="text-center py-10">
-          <svg className="mx-auto mb-3 opacity-30" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d4a017" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+          <svg className="mx-auto mb-3 opacity-30" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"
+            style={{ color: 'var(--color-secondary)' }}>
             <path d="M6 3h12l4 6-10 13L2 9l4-6z"/>
             <path d="M11 3L8 9l4 13 4-13-3-6"/>
             <line x1="2" y1="9" x2="22" y2="9"/>
           </svg>
-          <p className="text-sm text-[#9a7040]">尚未新增卡片</p>
+          <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>尚未新增卡片</p>
         </div>
       ) : (
         <div className="space-y-3 mb-6">
@@ -186,12 +243,10 @@ export default function SettingsPage() {
             const isExpiringSoon = expiryDate ? (expiryDate >= today && expiryDate <= sevenDaysLater) : false
             const formattedValidTo = card.validTo?.replace(/-/g, '/')
             return (
-              <div key={card.id} className="beast-card rounded-xl overflow-hidden"
-                style={{ border: '1px solid #3d2e14' }}>
+              <div key={card.id} className="glass-card overflow-hidden">
                 {/* Card face */}
                 <div className="relative h-40 p-4 flex flex-col justify-between"
                   style={{ background: hashCardColor(card.name) }}>
-                  {/* Top row: expiry badge left, rate badge right */}
                   <div className="flex items-start justify-between">
                     <div className="flex gap-1.5">
                       {isExpired && (
@@ -212,10 +267,8 @@ export default function SettingsPage() {
                       {card.baseRate}%
                     </span>
                   </div>
-                  {/* Decorative chip */}
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-6 rounded"
                     style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.2)' }} />
-                  {/* Bottom row: name left, date right */}
                   <div className="flex items-end justify-between">
                     <p className="text-xl font-bold leading-tight"
                       style={{ color: '#ffffff', textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
@@ -230,13 +283,12 @@ export default function SettingsPage() {
                   </div>
                 </div>
                 {/* Action row */}
-                <div className="flex items-center justify-between px-4 py-2.5"
-                  style={{ background: '#1a1208' }}>
+                <div className="flex items-center justify-between px-4 py-2.5">
                   <div>
                     {card.bankUrl && (
                       <a href={card.bankUrl} target="_blank" rel="noopener noreferrer"
                         className="text-xs inline-flex items-center gap-1 transition-colors"
-                        style={{ color: '#c8a060' }}>
+                        style={{ color: 'var(--color-accent)' }}>
                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                         銀行活動頁面
                       </a>
@@ -244,9 +296,9 @@ export default function SettingsPage() {
                   </div>
                   <div className="flex gap-3 text-sm">
                     <button onClick={() => setEditingCard(card)}
-                      className="transition-colors" style={{ color: '#c8901a' }}>編輯</button>
+                      className="transition-colors" style={{ color: 'var(--color-secondary)' }}>編輯</button>
                     <button onClick={() => handleDelete(card.id)}
-                      className="transition-colors" style={{ color: '#8b1a1a' }}>刪除</button>
+                      className="transition-colors" style={{ color: 'var(--color-danger)' }}>刪除</button>
                   </div>
                 </div>
               </div>
@@ -256,10 +308,9 @@ export default function SettingsPage() {
       )}
 
       {/* ── QR code sync ── */}
-      <div className="beast-card rounded-xl p-4 mb-4"
-        style={{ background: '#181308', border: '1px solid #3a2810' }}>
-        <h2 className="text-xs font-semibold text-[#c8901a] mb-1.5 uppercase tracking-widest">跨裝置同步</h2>
-        <p className="text-xs text-[#c8a060] mb-3">
+      <div className="glass-card p-4 mb-4">
+        <h2 className="text-xs font-semibold mb-1.5 uppercase tracking-widest" style={{ color: 'var(--color-secondary)' }}>跨裝置同步</h2>
+        <p className="text-xs mb-3" style={{ color: 'var(--color-text-muted)' }}>
           桌機設定完成後，產生 QR Code 讓手機掃描匯入。
           <br />
           注意：請在 Safari 瀏覽器中操作，「加入主畫面」後的 App 有獨立儲存空間，需重新掃碼匯入。
@@ -269,14 +320,14 @@ export default function SettingsPage() {
             onClick={() => setShowQR(true)}
             disabled={data.cards.length === 0}
             className="flex-1 text-sm py-2.5 rounded font-medium transition-all disabled:opacity-30"
-            style={{ background: 'linear-gradient(135deg, #c8901a, #d4a017)', color: '#0d0a06' }}
+            style={{ background: 'var(--color-secondary)', color: '#fff' }}
           >
             產生 QR Code
           </button>
           <button
             onClick={() => setShowImport(true)}
             className="flex-1 text-sm py-2.5 rounded font-medium border transition-colors"
-            style={{ borderColor: '#c8901a', color: '#c8901a' }}
+            style={{ borderColor: 'var(--color-secondary)', color: 'var(--color-secondary)', background: 'transparent' }}
           >
             掃碼匯入
           </button>

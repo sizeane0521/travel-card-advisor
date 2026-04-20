@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import CalcPage from './pages/CalcPage'
 import LedgerPage from './pages/LedgerPage'
 import SettingsPage from './pages/SettingsPage'
@@ -6,6 +6,7 @@ import TripsPage from './pages/TripsPage'
 import { ApiProviderContext, type ApiProvider } from './lib/apiProviderContext'
 
 type Tab = 'calc' | 'ledger' | 'trips' | 'settings'
+type Theme = 'dark' | 'light'
 
 // ── SVG Icons ────────────────────────────────────────────
 const CalcIcon = () => (
@@ -55,6 +56,18 @@ export default function App() {
   const [tab, setTab] = useState<Tab>('calc')
   const [provider, setProvider] = useState<ApiProvider>('gemini')
   const [apiKey, setApiKey] = useState('')
+  const [theme, setTheme] = useState<Theme>(
+    () => (localStorage.getItem('theme') as Theme) ?? 'dark'
+  )
+
+  useEffect(() => {
+    localStorage.setItem('theme', theme)
+    document.documentElement.dataset.theme = theme
+  }, [theme])
+
+  function toggleTheme() {
+    setTheme(t => t === 'dark' ? 'light' : 'dark')
+  }
 
   return (
     <ApiProviderContext.Provider value={{ provider, apiKey, setProvider, setApiKey }}>
@@ -63,30 +76,25 @@ export default function App() {
           {tab === 'calc'     && <CalcPage />}
           {tab === 'ledger'   && <LedgerPage />}
           {tab === 'trips'    && <TripsPage />}
-          {tab === 'settings' && <SettingsPage />}
+          {tab === 'settings' && <SettingsPage theme={theme} onToggleTheme={toggleTheme} />}
         </main>
 
         {/* ── Bottom tab bar ── */}
-        <nav className="fixed bottom-0 inset-x-0 flex safe-area-pb"
-          style={{
-            background: 'linear-gradient(to top, #0d0a06, #110d05)',
-            borderTop: '1px solid #3a2810',
-          }}>
+        <nav className="glass-nav fixed bottom-0 inset-x-0 flex safe-area-pb">
           {TABS.map(t => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className="flex-1 flex flex-col items-center py-2.5 gap-1 transition-all"
+              className="flex-1 flex flex-col items-center py-2.5 gap-1 transition-all relative"
               style={{
-                color: tab === t.id ? '#d4a017' : '#5a3f1a',
-                textShadow: tab === t.id ? '0 0 8px rgba(212,160,23,0.5)' : 'none',
+                color: tab === t.id ? 'var(--color-secondary)' : 'var(--color-text-muted)',
               }}
             >
               {t.icon}
               <span className="text-[10px] font-medium tracking-wide">{t.label}</span>
               {tab === t.id && (
                 <span className="absolute bottom-0 h-[2px] w-8 rounded-full"
-                  style={{ background: 'linear-gradient(90deg, transparent, #d4a017, transparent)' }} />
+                  style={{ background: 'linear-gradient(90deg, transparent, var(--color-secondary), transparent)' }} />
               )}
             </button>
           ))}

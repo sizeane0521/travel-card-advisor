@@ -166,14 +166,37 @@ export default function TripsPage() {
     dispatch({ type: 'SET_ACTIVE_TRIP', tripId })
   }
 
+  if (sortedTrips.length === 0 && !showForm) {
+    return (
+      <div className="flex flex-col items-center justify-center text-center px-8"
+        style={{ minHeight: 'calc(100dvh - 80px)', paddingBottom: '15vh' }}>
+        <svg className="mb-4 opacity-40" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" style={{ color: 'var(--color-secondary)' }} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="2" y1="12" x2="22" y2="12"/>
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+        </svg>
+        <p className="text-sm leading-relaxed mb-6" style={{ color: 'var(--color-text-muted)' }}>
+          尚無旅程記錄。<br />點擊下方按鈕建立新旅程。
+        </p>
+        <button
+          onClick={() => setShowForm(true)}
+          className="text-sm px-6 py-2.5 rounded font-semibold tracking-wide transition-all active:scale-95"
+          style={{ background: 'var(--color-secondary)', color: '#fff' }}
+        >
+          ＋ 新旅程
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div className="p-4 max-w-lg mx-auto">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-lg font-semibold text-[#f2e8c9]">旅程</h1>
+        <h1 className="text-lg font-semibold" style={{ color: 'var(--color-text-base)' }}>旅程</h1>
         <button
           onClick={() => setShowForm(v => !v)}
           className="text-sm px-4 py-1.5 rounded font-semibold tracking-wide transition-all active:scale-95"
-          style={{ background: 'linear-gradient(135deg, #c8901a, #d4a017)', color: '#0d0a06' }}
+          style={{ background: 'var(--color-secondary)', color: '#fff' }}
         >
           ＋ 新旅程
         </button>
@@ -181,10 +204,10 @@ export default function TripsPage() {
 
       {showForm && (
         <form onSubmit={handleCreate}
-          className="beast-card rounded-xl p-4 mb-4 space-y-3"
-          style={{ background: '#1a1208', border: '1px solid #c8901a', boxShadow: '0 0 16px rgba(200,144,26,0.12)' }}>
+          className="glass-card rounded-xl p-4 mb-4 space-y-3"
+          style={{ background: 'var(--color-bg-surface)', border: '1px solid var(--color-secondary)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
           <div>
-            <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">旅程名稱 <span style={{ color: '#ff5555' }}>*</span></label>
+            <label className="text-xs block mb-1 uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>旅程名稱 <span style={{ color: '#ff5555' }}>*</span></label>
             <input
               value={name}
               onChange={e => { setName(e.target.value); if (nameError) setNameError(false) }}
@@ -196,7 +219,7 @@ export default function TripsPage() {
             {nameError && <p className="text-xs mt-1" style={{ color: '#ff5555' }}>請輸入旅程名稱</p>}
           </div>
           <div>
-            <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">開始日期 <span style={{ color: '#ff5555' }}>*</span></label>
+            <label className="text-xs block mb-1 uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>開始日期 <span style={{ color: '#ff5555' }}>*</span></label>
             <DatePicker
               value={startDate}
               onChange={setStartDate}
@@ -204,7 +227,7 @@ export default function TripsPage() {
             />
           </div>
           <div>
-            <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">結束日期（選填）</label>
+            <label className="text-xs block mb-1 uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>結束日期（選填）</label>
             <DatePicker
               value={endDate}
               min={startDate}
@@ -213,7 +236,7 @@ export default function TripsPage() {
             />
           </div>
           <div>
-            <label className="text-xs text-[#c8a060] block mb-2 uppercase tracking-wider">幣別 <span style={{ color: '#ff5555' }}>*</span></label>
+            <label className="text-xs block mb-2 uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>幣別 <span style={{ color: '#ff5555' }}>*</span></label>
             <div className="flex flex-wrap gap-2 mb-2">
               {POPULAR_CURRENCIES.map(({ code, flag }) => (
                 <button
@@ -222,21 +245,21 @@ export default function TripsPage() {
                   onClick={() => { handleCurrencySelect(code); if (currencyError) setCurrencyError(false) }}
                   className="px-3 py-1.5 rounded-lg text-sm border transition-all"
                   style={selectedCurrency === code
-                    ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a', fontWeight: 600 }
-                    : { background: 'transparent', color: currencyError ? '#ff5555' : '#c8a060', borderColor: currencyError ? '#ff5555' : '#4a3418' }}
+                    ? { background: 'var(--color-secondary)', color: '#fff', borderColor: 'var(--color-secondary)', fontWeight: 600 }
+                    : { background: 'transparent', color: currencyError ? '#ff5555' : 'var(--color-text-muted)', borderColor: currencyError ? '#ff5555' : 'var(--color-border)' }}
                 >
                   {flag} {code}
                 </button>
               ))}
               {fetchStatus === 'loading' && (
-                <span className="text-xs self-center" style={{ color: '#9a7040' }}>載入中…</span>
+                <span className="text-xs self-center" style={{ color: 'var(--color-text-muted)' }}>載入中…</span>
               )}
             </div>
             {currencyError && <p className="text-xs mb-2" style={{ color: '#ff5555' }}>請選擇幣別</p>}
             {fetchStatus === 'error' && (
               <p className="text-xs mb-2" style={{ color: '#ff5555' }}>無法取得最新匯率，請手動輸入</p>
             )}
-            <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">匯率（1 外幣 = NT$?）<span style={{ color: '#ff5555' }}>*</span></label>
+            <label className="text-xs block mb-1 uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>匯率（1 外幣 = NT$?）<span style={{ color: '#ff5555' }}>*</span></label>
             <input
               type="number"
               step="0.0001"
@@ -249,35 +272,25 @@ export default function TripsPage() {
             />
             {rateError && <p className="text-xs mt-1" style={{ color: '#ff5555' }}>請輸入有效匯率</p>}
             {!rateError && fetchStatus === 'idle' && selectedCurrency && exchangeRateInput && (
-              <p className="text-xs mt-1" style={{ color: '#9a7040' }}>已自動帶入最新參考匯率，可手動調整</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>已自動帶入最新參考匯率，可手動調整</p>
             )}
           </div>
           <div className="flex gap-2">
             <button type="submit"
               className="flex-1 rounded-lg py-2.5 font-semibold text-sm transition-all"
-              style={{ background: 'linear-gradient(135deg, #c8901a, #d4a017)', color: '#0d0a06' }}>
+              style={{ background: 'var(--color-secondary)', color: '#fff' }}>
               建立
             </button>
             <button type="button" onClick={() => setShowForm(false)}
               className="flex-1 rounded-lg py-2.5 text-sm border transition-colors"
-              style={{ borderColor: '#3a2810', color: '#c8a060' }}>
+              style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-muted)' }}>
               取消
             </button>
           </div>
         </form>
       )}
 
-      {sortedTrips.length === 0 ? (
-        <div className="text-center py-14">
-          <svg className="mx-auto mb-3 opacity-30" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d4a017" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="2" y1="12" x2="22" y2="12"/>
-            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-          </svg>
-          <p className="text-sm text-[#9a7040]">尚無旅程記錄。點擊「新旅程」開始。</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
+      <div className="space-y-3">
           {sortedTrips.map(trip => {
             const totalSpend = trip.expenses.reduce((s, e) => s + e.amount, 0)
             const totalReward = trip.expenses.reduce((s, e) => s + e.estimatedReward, 0)
@@ -288,42 +301,42 @@ export default function TripsPage() {
               <div
                 key={trip.id}
                 onClick={() => setSelectedTrip(trip)}
-                className="beast-card rounded-xl p-4 cursor-pointer active:opacity-80 transition-opacity"
+                className="glass-card rounded-xl p-4 cursor-pointer active:opacity-80 transition-opacity"
                 style={isActive
-                  ? { background: '#1e1608', border: '1px solid #c8901a', boxShadow: '0 0 14px rgba(200,144,26,0.13)' }
-                  : { background: '#1a1208', border: '1px solid #3d2e14' }}
+                  ? { background: 'var(--color-bg-surface)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid var(--color-secondary)' }
+                  : { border: '1px solid var(--color-border)' }}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       {isActive && (
                         <span className="text-[10px] px-2 py-0.5 rounded font-semibold tracking-wider"
-                          style={{ background: 'rgba(212,160,23,0.18)', color: '#d4a017', border: '1px solid rgba(212,160,23,0.3)' }}>
+                          style={{ background: 'rgba(245,166,35,0.15)', color: 'var(--color-secondary)', border: '1px solid rgba(245,166,35,0.35)' }}>
                           ◆ 進行中
                         </span>
                       )}
                       {isEnded && (
                         <span className="text-[10px] px-2 py-0.5 rounded"
-                          style={{ background: 'rgba(90,63,26,0.3)', color: '#9a7040', border: '1px solid #3a2810' }}>
+                          style={{ background: 'rgba(0,185,181,0.08)', color: 'var(--color-accent)', border: '1px solid rgba(0,185,181,0.2)' }}>
                           已結束
                         </span>
                       )}
-                      <span className="font-medium text-[#f2e8c9]">{trip.name}</span>
+                      <span className="font-medium" style={{ color: 'var(--color-text-base)' }}>{trip.name}</span>
                     </div>
-                    <p className="text-xs text-[#9a7040] mt-0.5">
+                    <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
                       {trip.startDate}{trip.endDate ? ` — ${trip.endDate}` : ''}
                     </p>
                   </div>
-                  <span className="text-[#9a7040] text-lg ml-2 shrink-0">›</span>
+                  <span className="text-lg ml-2 shrink-0" style={{ color: 'var(--color-text-muted)' }}>›</span>
                 </div>
 
                 <div className="mt-2 flex gap-4 text-sm">
-                  <span className="text-[#c8a060]">消費 <span className="font-medium text-[#f2e8c9]">NT${totalSpend.toLocaleString()}</span></span>
-                  <span className="text-[#c8a060]">回饋 <span className="font-medium" style={{ color: '#4ade80' }}>NT${totalReward.toLocaleString()}</span></span>
-                  <span className="text-[#9a7040]">{trip.expenses.length} 筆</span>
+                  <span className="" style={{ color: 'var(--color-text-muted)' }}>消費 <span className="font-medium" style={{ color: 'var(--color-text-base)' }}>NT${totalSpend.toLocaleString()}</span></span>
+                  <span className="" style={{ color: 'var(--color-text-muted)' }}>回饋 <span className="font-medium" style={{ color: 'var(--color-success)' }}>NT${totalReward.toLocaleString()}</span></span>
+                  <span className="" style={{ color: 'var(--color-text-muted)' }}>{trip.expenses.length} 筆</span>
                 </div>
                 {trip.exchangeRate && (
-                  <p className="text-xs mt-1" style={{ color: '#9a7040' }}>
+                  <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
                     {trip.exchangeRate.currency} · 匯率 {trip.exchangeRate.rate}
                   </p>
                 )}
@@ -333,7 +346,7 @@ export default function TripsPage() {
                     <button
                       onClick={() => handleSetActive(trip.id)}
                       className="text-xs px-3 py-1 rounded border transition-colors"
-                      style={{ borderColor: '#c8901a', color: '#c8901a' }}
+                      style={{ borderColor: 'var(--color-secondary)', color: 'var(--color-secondary)' }}
                     >
                       設為當前旅程
                     </button>
@@ -350,7 +363,7 @@ export default function TripsPage() {
                   <button
                     onClick={() => startEditTrip(trip)}
                     className="text-xs px-3 py-1 rounded border transition-colors"
-                    style={{ borderColor: '#3d2e14', color: '#c8a060' }}
+                    style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-muted)' }}
                   >
                     編輯
                   </button>
@@ -365,37 +378,37 @@ export default function TripsPage() {
 
                 {/* Inline edit form */}
                 {editingTripId === trip.id && (
-                  <div className="mt-3 space-y-2 pt-3" style={{ borderTop: '1px solid #3d2e14' }} onClick={e => e.stopPropagation()}>
+                  <div className="mt-3 space-y-2 pt-3" style={{ borderTop: '1px solid var(--color-border)' }} onClick={e => e.stopPropagation()}>
                     <div>
-                      <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">旅程名稱</label>
+                      <label className="text-xs block mb-1 uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>旅程名稱</label>
                       <input
                         value={editName}
                         onChange={e => { setEditName(e.target.value); if (editNameError) setEditNameError(false) }}
                         className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none"
-                        style={{ background: '#141008', borderColor: editNameError ? '#ff5555' : '#4a3418', color: '#f2e8c9' }}
+                        style={{ background: 'var(--color-input-bg)', borderColor: editNameError ? '#ff5555' : 'var(--color-input-border)', color: 'var(--color-text-base)' }}
                       />
                       {editNameError && <p className="text-xs mt-0.5" style={{ color: '#ff5555' }}>請輸入旅程名稱</p>}
                     </div>
                     <div className="flex gap-2">
                       <div className="flex-1">
-                        <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">開始日期</label>
+                        <label className="text-xs block mb-1 uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>開始日期</label>
                         <DatePicker value={editStartDate} onChange={setEditStartDate} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none" />
                       </div>
                       <div className="flex-1">
-                        <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">結束日期</label>
+                        <label className="text-xs block mb-1 uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>結束日期</label>
                         <DatePicker value={editEndDate} onChange={setEditEndDate} min={editStartDate} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none" />
                       </div>
                     </div>
                     {trip.exchangeRate && (
                       <div>
-                        <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">匯率（1 {editCurrency} = NT$?）</label>
+                        <label className="text-xs block mb-1 uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>匯率（1 {editCurrency} = NT$?）</label>
                         <input
                           type="number"
                           step="0.0001"
                           value={editRate}
                           onChange={e => { setEditRate(e.target.value); if (editRateError) setEditRateError(false) }}
                           className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none"
-                          style={{ background: '#141008', borderColor: editRateError ? '#ff5555' : '#4a3418', color: '#f2e8c9' }}
+                          style={{ background: 'var(--color-input-bg)', borderColor: editRateError ? '#ff5555' : 'var(--color-input-border)', color: 'var(--color-text-base)' }}
                         />
                         {editRateError && <p className="text-xs mt-0.5" style={{ color: '#ff5555' }}>請輸入有效匯率</p>}
                       </div>
@@ -404,14 +417,14 @@ export default function TripsPage() {
                       <button
                         onClick={() => saveEditTrip(trip)}
                         className="flex-1 rounded-lg py-1.5 text-xs font-semibold"
-                        style={{ background: 'linear-gradient(135deg, #c8901a, #d4a017)', color: '#0d0a06' }}
+                        style={{ background: 'var(--color-secondary)', color: '#fff' }}
                       >
                         儲存
                       </button>
                       <button
                         onClick={cancelEditTrip}
                         className="flex-1 rounded-lg py-1.5 text-xs border"
-                        style={{ borderColor: '#3a2810', color: '#c8a060' }}
+                        style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-muted)' }}
                       >
                         取消
                       </button>
@@ -422,7 +435,6 @@ export default function TripsPage() {
             )
           })}
         </div>
-      )}
     </div>
   )
 }

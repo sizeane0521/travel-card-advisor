@@ -113,12 +113,12 @@ export default function DatePicker({ value, onChange, min, max, className, style
         onClick={() => setIsOpen(o => !o)}
         className={className ?? baseInputClass}
         style={{
-          background: '#141008',
-          borderColor: isOpen ? '#c8901a' : '#4a3418',
-          color: displayValue ? '#f2e8c9' : '#6a5030',
+          background: 'var(--color-input-bg)',
+          borderColor: isOpen ? 'var(--color-input-focus)' : 'var(--color-input-border)',
+          color: displayValue ? 'var(--color-text-base)' : 'var(--color-text-muted)',
           cursor: 'pointer',
           userSelect: 'none',
-          boxShadow: isOpen ? '0 0 0 2px rgba(200,144,26,0.2)' : undefined,
+          boxShadow: isOpen ? '0 0 0 2px rgba(0,185,181,0.2)' : undefined,
         }}
       >
         {displayValue || '選擇日期'}
@@ -129,10 +129,10 @@ export default function DatePicker({ value, onChange, min, max, className, style
         <div
           className="absolute left-0 mt-1 rounded-xl p-3 z-50"
           style={{
-            background: '#1a1208',
-            border: '1px solid #3d2e14',
+            background: 'var(--color-calendar-bg)',
+            border: '1px solid var(--color-border)',
             minWidth: '260px',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.25)',
           }}
         >
           {/* Month header */}
@@ -141,18 +141,18 @@ export default function DatePicker({ value, onChange, min, max, className, style
               type="button"
               onClick={prevMonth}
               className="px-2 py-1 rounded text-sm"
-              style={{ color: '#c8a060' }}
+              style={{ color: 'var(--color-text-muted)' }}
             >
               ‹
             </button>
-            <span className="text-sm font-semibold" style={{ color: '#f2e8c9' }}>
+            <span className="text-sm font-semibold" style={{ color: 'var(--color-text-base)' }}>
               {monthLabel}
             </span>
             <button
               type="button"
               onClick={nextMonth}
               className="px-2 py-1 rounded text-sm"
-              style={{ color: '#c8a060' }}
+              style={{ color: 'var(--color-text-muted)' }}
             >
               ›
             </button>
@@ -161,7 +161,7 @@ export default function DatePicker({ value, onChange, min, max, className, style
           {/* Weekday header */}
           <div className="grid grid-cols-7 mb-1">
             {WEEKDAYS.map(w => (
-              <div key={w} className="text-center text-[10px] py-1" style={{ color: '#9a7040' }}>
+              <div key={w} className="text-center text-[10px] py-1" style={{ color: 'var(--color-text-muted)' }}>
                 {w}
               </div>
             ))}
@@ -176,13 +176,13 @@ export default function DatePicker({ value, onChange, min, max, className, style
               const isSelected = cell.date === value
               const isToday = cell.date === today
 
-              let cellStyle: React.CSSProperties = { color: '#f2e8c9' }
+              let cellStyle: React.CSSProperties = { color: 'var(--color-text-base)' }
               if (isSelected) {
-                cellStyle = { background: '#d4a017', color: '#0d0a06', borderRadius: '50%' }
+                cellStyle = { background: 'var(--color-secondary)', color: '#fff', borderRadius: '50%' }
               } else if (isToday) {
-                cellStyle = { color: '#d4a017', border: '1px solid #d4a017', borderRadius: '50%' }
+                cellStyle = { color: 'var(--color-secondary)', border: '1px solid var(--color-secondary)', borderRadius: '50%' }
               } else if (cell.disabled) {
-                cellStyle = { color: '#3d2e14' }
+                cellStyle = { color: 'var(--color-border)' }
               }
 
               return (

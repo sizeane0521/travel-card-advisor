@@ -254,26 +254,32 @@ export default function CalcPage() {
 
   if (!activeTrip) {
     return (
-      <div className="p-4 text-center py-14">
-        <svg className="mx-auto mb-3 opacity-30" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d4a017" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+      <div className="flex flex-col items-center justify-center text-center px-8"
+        style={{ minHeight: 'calc(100dvh - 80px)', paddingBottom: '15vh' }}>
+        <svg className="mb-4 opacity-40" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" style={{ color: 'var(--color-secondary)' }} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
           <polyline points="14 2 14 8 20 8"/>
           <line x1="8" y1="13" x2="16" y2="13"/>
           <line x1="8" y1="17" x2="12" y2="17"/>
         </svg>
-        <p className="text-sm text-[#9a7040]">尚無進行中的旅程。請至「旅程」頁面建立新旅程。</p>
+        <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+          尚無進行中的旅程。<br />請至「旅程」頁面建立新旅程。
+        </p>
       </div>
     )
   }
 
   if (activeTrip.endDate && activeTrip.endDate <= todayStr()) {
     return (
-      <div className="p-4 text-center py-14">
-        <svg className="mx-auto mb-3 opacity-30" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#c0392b" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+      <div className="flex flex-col items-center justify-center text-center px-8"
+        style={{ minHeight: 'calc(100dvh - 80px)', paddingBottom: '15vh' }}>
+        <svg className="mb-4 opacity-40" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" style={{ color: 'var(--color-danger)' }} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
           <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
         </svg>
-        <p className="text-sm text-[#9a7040]">此旅程已結束，無法新增消費。請建立新旅程。</p>
+        <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+          此旅程已結束，無法新增消費。<br />請建立新旅程。
+        </p>
       </div>
     )
   }
@@ -283,23 +289,23 @@ export default function CalcPage() {
       {/* Toast notification */}
       {lastRecordResult && (
         <div className="mb-3 rounded-xl px-4 py-3 text-sm font-medium animate-pulse"
-          style={{ background: 'rgba(74,222,128,0.12)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.3)' }}>
+          style={{ background: 'rgba(74,222,128,0.12)', color: 'var(--color-success)', border: '1px solid rgba(74,222,128,0.3)' }}>
           {lastRecordResult.text}
         </div>
       )}
 
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-lg font-semibold text-[#f2e8c9]">試算</h1>
+        <h1 className="text-lg font-semibold" style={{ color: 'var(--color-text-base)' }}>試算</h1>
       </div>
 
       {/* ── Calc form ── */}
-      <div className="beast-card rounded-xl p-4 mb-4 space-y-4"
-        style={{ background: '#1a1208', border: '1px solid #3a2810' }}>
+      <div className="glass-card rounded-xl p-4 mb-4 space-y-4"
+        style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)' }}>
 
         {/* Amount input + exchange rate */}
         <div>
-          <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">
+          <label className="text-xs block mb-1 uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>
             {exchangeRate ? `金額（${exchangeRate.currency}）` : '金額（NT$）'}
           </label>
           <input
@@ -313,7 +319,7 @@ export default function CalcPage() {
           {/* 6.1 Custom rate input when trip has exchangeRate */}
           {exchangeRate && (
             <div className="flex items-center gap-2 mt-1.5">
-              <span className="text-xs" style={{ color: '#9a7040' }}>匯率</span>
+              <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>匯率</span>
               <input
                 type="number"
                 inputMode="decimal"
@@ -321,24 +327,24 @@ export default function CalcPage() {
                 onChange={e => setCustomRate(e.target.value)}
                 placeholder={String(exchangeRate.rate)}
                 className="w-24 border rounded px-2 py-1 text-xs focus:outline-none"
-                style={{ background: '#141008', borderColor: '#4a3418', color: '#c8a060' }}
+                style={{ background: 'var(--color-input-bg)', borderColor: 'var(--color-input-border)', color: 'var(--color-text-muted)' }}
               />
-              <span className="text-xs" style={{ color: '#9a7040' }}>
+              <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
                 （預設 {exchangeRate.rate}）
               </span>
             </div>
           )}
           {exchangeRate && validAmount && (
-            <p className="text-2xl font-bold mt-1" style={{ color: '#f2e8c9' }}>
+            <p className="text-2xl font-bold mt-1" style={{ color: 'var(--color-text-base)' }}>
               ≈ NT${twdAmount.toLocaleString()}
             </p>
           )}
-          {amountError && <p className="text-xs mt-1" style={{ color: '#c0392b' }}>{amountError}</p>}
+          {amountError && <p className="text-xs mt-1" style={{ color: 'var(--color-danger)' }}>{amountError}</p>}
         </div>
 
         {/* Expense date picker */}
         <div>
-          <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">消費日期</label>
+          <label className="text-xs block mb-1 uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>消費日期</label>
           <DatePicker
             value={expenseDate}
             min={activeTrip.startDate}
@@ -351,10 +357,10 @@ export default function CalcPage() {
       </div>
 
       {/* ── Store section ── */}
-      <div className="beast-card rounded-xl p-4 mb-4"
-        style={{ background: '#1a1208', border: '1px solid #3a2810' }}>
+      <div className="glass-card rounded-xl p-4 mb-4"
+        style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)' }}>
         <div>
-          <label className="text-xs text-[#c8a060] block mb-2 uppercase tracking-wider">店家</label>
+          <label className="text-xs block mb-2 uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>店家</label>
 
           <div className="relative mb-2">
             <input
@@ -374,7 +380,7 @@ export default function CalcPage() {
                 type="button"
                 onClick={clearStore}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-xs px-1"
-                style={{ color: '#9a7040' }}
+                style={{ color: 'var(--color-text-muted)' }}
                 aria-label="清除"
               >
                 ×
@@ -391,8 +397,8 @@ export default function CalcPage() {
                 onClick={() => selectStore(n)}
                 className="px-3 py-1.5 rounded-lg text-sm border transition-all"
                 style={store === n
-                  ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a', fontWeight: 600 }
-                  : { background: 'rgba(212,160,23,0.08)', color: '#c8a060', borderColor: '#4a3418' }}
+                  ? { background: 'var(--color-secondary)', color: '#fff', borderColor: 'var(--color-secondary)', fontWeight: 600 }
+                  : { background: 'transparent', color: 'var(--color-text-muted)', borderColor: 'var(--color-border)' }}
               >
                 {n}
               </button>
@@ -406,8 +412,8 @@ export default function CalcPage() {
                 onClick={() => selectStore(n)}
                 className="px-3 py-1.5 rounded-lg text-sm border transition-all"
                 style={store === n && storeQuery === n
-                  ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a', fontWeight: 600 }
-                  : { background: 'transparent', color: '#c8a060', borderColor: '#4a3418' }}
+                  ? { background: 'var(--color-secondary)', color: '#fff', borderColor: 'var(--color-secondary)', fontWeight: 600 }
+                  : { background: 'transparent', color: 'var(--color-text-muted)', borderColor: 'var(--color-border)' }}
               >
                 {n}
               </button>
@@ -416,7 +422,7 @@ export default function CalcPage() {
             {storeQuery.length > 0 && filteredStores.length === 0 && (
               <div
                 className="px-3 py-1.5 rounded-lg text-sm border"
-                style={{ background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a', fontWeight: 600 }}
+                style={{ background: 'var(--color-secondary)', color: '#fff', borderColor: 'var(--color-secondary)', fontWeight: 600 }}
               >
                 {storeQuery}
               </div>
@@ -435,7 +441,7 @@ export default function CalcPage() {
                   type="button"
                   onClick={() => setShowCategoryBrowser(v => !v)}
                   className="text-xs underline"
-                  style={{ color: '#9a7040' }}
+                  style={{ color: 'var(--color-text-muted)' }}
                 >
                   {showCategoryBrowser ? '收起分類' : '展開分類'}
                 </button>
@@ -445,7 +451,7 @@ export default function CalcPage() {
                       const groupKey = `${card.id}:${bonus.storeName}`
                       const isExpanded = expandedGroups.has(groupKey)
                       return (
-                        <div key={groupKey} className="rounded-lg p-2" style={{ background: '#141008', border: '1px solid #3d2e14' }}>
+                        <div key={groupKey} className="rounded-lg p-2" style={{ background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)' }}>
                           <button
                             type="button"
                             onClick={() => setExpandedGroups(prev => {
@@ -454,16 +460,16 @@ export default function CalcPage() {
                               return next
                             })}
                             className="flex items-center gap-1 text-xs font-medium w-full text-left"
-                            style={{ color: '#d4a017' }}
+                            style={{ color: 'var(--color-secondary)' }}
                           >
                             <span>{bonus.storeName}</span>
-                            <span className="ml-auto" style={{ color: '#9a7040' }}>{isExpanded ? '▲' : '▶'}</span>
+                            <span className="ml-auto" style={{ color: 'var(--color-text-muted)' }}>{isExpanded ? '▲' : '▶'}</span>
                           </button>
                           {isExpanded && (
                             <div className="mt-2 space-y-2">
                               {bonus.subCategories!.map(sub => (
                                 <div key={sub.label}>
-                                  <p className="text-[10px] uppercase tracking-wider mb-1" style={{ color: '#9a7040' }}>{sub.label}</p>
+                                  <p className="text-[10px] uppercase tracking-wider mb-1" style={{ color: 'var(--color-text-muted)' }}>{sub.label}</p>
                                   <div className="flex flex-wrap gap-1.5">
                                     {sub.stores.map(s => (
                                       <button
@@ -472,8 +478,8 @@ export default function CalcPage() {
                                         onClick={() => selectStore(s)}
                                         className="px-2.5 py-1 rounded-lg text-xs border transition-all"
                                         style={store === s
-                                          ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a', fontWeight: 600 }
-                                          : { background: 'transparent', color: '#c8a060', borderColor: '#4a3418' }}
+                                          ? { background: 'var(--color-secondary)', color: '#fff', borderColor: 'var(--color-secondary)', fontWeight: 600 }
+                                          : { background: 'transparent', color: 'var(--color-text-muted)', borderColor: 'var(--color-border)' }}
                                       >
                                         {s}
                                       </button>
@@ -496,10 +502,10 @@ export default function CalcPage() {
       </div>
 
       {/* ── Payment method section ── */}
-      <div className="beast-card rounded-xl p-4 mb-4"
-        style={{ background: '#1a1208', border: '1px solid #3a2810' }}>
+      <div className="glass-card rounded-xl p-4 mb-4"
+        style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)' }}>
         <div>
-          <label className="text-xs text-[#c8a060] block mb-2 uppercase tracking-wider">付款方式</label>
+          <label className="text-xs block mb-2 uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>付款方式</label>
           <div className="flex gap-2">
             {([
               { value: 'apple_pay', label: 'Apple Pay' },
@@ -512,8 +518,8 @@ export default function CalcPage() {
                 onClick={() => setPaymentMethod(value)}
                 className="flex-1 py-1.5 rounded-lg text-xs border transition-all"
                 style={paymentMethod === value
-                  ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a', fontWeight: 600 }
-                  : { background: 'transparent', color: '#c8a060', borderColor: '#4a3418' }}
+                  ? { background: 'var(--color-secondary)', color: '#fff', borderColor: 'var(--color-secondary)', fontWeight: 600 }
+                  : { background: 'transparent', color: 'var(--color-text-muted)', borderColor: 'var(--color-border)' }}
               >
                 {label}
               </button>
@@ -524,9 +530,9 @@ export default function CalcPage() {
 
       {/* ── Card recommendation list ── */}
       {data.cards.length > 0 && (
-        <div className="beast-card rounded-xl p-4 mb-4"
-          style={{ background: '#1a1208', border: '1px solid #3a2810' }}>
-          <label className="text-xs text-[#c8a060] block mb-2 uppercase tracking-wider">選擇信用卡（依回饋排序）</label>
+        <div className="glass-card rounded-xl p-4 mb-4"
+          style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)' }}>
+          <label className="text-xs block mb-2 uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>選擇信用卡（依回饋排序）</label>
             <div className="space-y-2">
               {sortedRecommendations.map((advice, idx) => {
                 const isSelected = advice.card.id === effectiveSelectedCardId
@@ -560,20 +566,22 @@ export default function CalcPage() {
                     className="rounded-xl overflow-hidden transition-all relative"
                     style={{
                       cursor: advice.isFull || !validAmount ? 'default' : 'pointer',
-                      background: isTop && isSelected ? '#2a1f0a' : isSelected ? '#1e1608' : '#141008',
+                      backdropFilter: 'blur(12px)',
+                      WebkitBackdropFilter: 'blur(12px)',
+                      background: isSelected ? 'var(--color-bg-surface)' : 'transparent',
                       border: isTop && isSelected
-                        ? '2px solid #ffcc00'
+                        ? '2px solid var(--color-secondary)'
                         : isSelected
-                          ? '1px solid #c8901a'
-                          : '1px solid #3d2e14',
-                      boxShadow: isSelected ? '0 0 12px rgba(255,204,0,0.25)' : 'none',
+                          ? '1px solid var(--color-secondary)'
+                          : '1px solid var(--color-border)',
+                      boxShadow: isSelected ? '0 0 12px rgba(245,166,35,0.2)' : 'none',
                       opacity: advice.isFull ? 0.45 : !validAmount ? 0.4 : 1,
                     }}
                   >
                     {/* 推薦 badge — absolute positioned top-left corner */}
                     {isTop && !advice.isFull && (
                       <div className="absolute top-0 left-0 px-1.5 py-0.5 rounded-br-lg text-[10px] font-bold"
-                        style={{ background: '#c8901a', color: '#0d0a06' }}>
+                        style={{ background: 'var(--color-secondary)', color: '#fff', border: 'none' }}>
                         推薦
                       </div>
                     )}
@@ -582,7 +590,7 @@ export default function CalcPage() {
                     <div className="flex-1 min-w-0 p-3">
                       {/* Row 1: card name + badges + rate + button */}
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-[#f2e8c9] flex-1 min-w-0 truncate">{advice.card.name}</span>
+                        <span className="text-sm font-medium flex-1 min-w-0 truncate" style={{ color: 'var(--color-text-base)' }}>{advice.card.name}</span>
                         {advice.paymentMethodBadge && paymentMethod !== 'physical' && (
                           <span className="text-xs px-1.5 py-0.5 rounded font-medium shrink-0"
                             style={{ background: 'rgba(74,174,226,0.15)', color: '#4aade2', border: '1px solid rgba(74,174,226,0.3)' }}>
@@ -591,12 +599,12 @@ export default function CalcPage() {
                         )}
                         {advice.isFull && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded shrink-0"
-                            style={{ background: 'rgba(139,26,26,0.3)', color: '#c0392b', border: '1px solid #5a1a1a' }}>
+                            style={{ background: 'rgba(248,113,113,0.1)', color: 'var(--color-danger)', border: '1px solid rgba(248,113,113,0.3)' }}>
                             本月已滿
                           </span>
                         )}
                         <span className="text-lg font-bold shrink-0"
-                          style={{ color: advice.isFull ? '#c0392b' : '#d4a017' }}>
+                          style={{ color: advice.isFull ? 'var(--color-danger)' : 'var(--color-secondary)' }}>
                           {advice.isFull ? '0%' : `${advice.effectiveRate}%`}
                         </span>
                         <button
@@ -608,8 +616,8 @@ export default function CalcPage() {
                           }}
                           className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all"
                           style={advice.isFull || !validAmount
-                            ? { background: 'transparent', color: '#3d2e14', borderColor: '#3d2e14', cursor: 'not-allowed' }
-                            : { background: 'transparent', color: '#c8901a', borderColor: '#c8901a' }}
+                            ? { background: 'transparent', color: 'var(--color-border)', borderColor: 'var(--color-border)', cursor: 'not-allowed' }
+                            : { background: 'transparent', color: 'var(--color-secondary)', borderColor: 'var(--color-secondary)' }}
                         >
                           +刷卡
                         </button>
@@ -618,13 +626,13 @@ export default function CalcPage() {
                       {/* Row 2: rate breakdown (left) + reward total (right) */}
                       {!advice.isFull && (
                         <div className="flex items-end justify-between mt-1 gap-2">
-                          <p className="text-xs flex-1 min-w-0" style={{ color: '#c8a060' }}>
+                          <p className="text-xs flex-1 min-w-0" style={{ color: 'var(--color-text-muted)' }}>
                             基本{advice.rateBreakdown.base}%
                             {advice.rateBreakdown.paymentMethod > 0 && ` + 行動支付${advice.rateBreakdown.paymentMethod}%`}
                             {advice.rateBreakdown.store > 0 && ` + 店家${advice.rateBreakdown.store}%`}
                           </p>
                           {twdAmount > 0 && breakdown && (
-                            <span className="text-2xl font-bold shrink-0" style={{ color: '#4ade80' }}>
+                            <span className="text-2xl font-bold shrink-0" style={{ color: 'var(--color-success)' }}>
                               NT${estimated.toLocaleString()}
                             </span>
                           )}
@@ -634,19 +642,19 @@ export default function CalcPage() {
                       {/* Divider + detail line */}
                       {detailParts.length > 0 && (
                         <>
-                          <div className="mt-2 mb-1.5" style={{ height: 1, background: '#3d2e14' }} />
-                          <p className="text-xs" style={{ color: '#9a7040' }}>{detailParts.join(' | ')}</p>
+                          <div className="mt-2 mb-1.5" style={{ height: 1, background: 'var(--color-border)' }} />
+                          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{detailParts.join(' | ')}</p>
                         </>
                       )}
 
                       {/* Progress bar for top card */}
                       {showBar && (
                         <div className="mt-2">
-                          <div className="rounded-full overflow-hidden h-1.5" style={{ background: '#2e2210' }}>
+                          <div className="rounded-full overflow-hidden h-1.5" style={{ background: 'var(--color-border)' }}>
                             <div className="h-full rounded-full transition-all"
-                              style={{ width: `${barPct}%`, background: 'linear-gradient(90deg, #c8901a, #d4a017)' }} />
+                              style={{ width: `${barPct}%`, background: 'var(--color-secondary)' }} />
                           </div>
-                          <p className="text-xs mt-1" style={{ color: '#c8a060' }}>
+                          <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
                             {advice.remainingCapDisplay}
                           </p>
                         </div>

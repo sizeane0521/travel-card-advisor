@@ -39,37 +39,36 @@ export default function TripDetailPage({ trip, cards, onBack }: Props) {
         <button
           onClick={onBack}
           className="text-sm px-2 py-1 rounded border transition-colors shrink-0"
-          style={{ borderColor: '#3a2810', color: '#c8a060' }}
+          style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-muted)' }}
         >
           ← 返回
         </button>
-        <h1 className="text-lg font-semibold text-[#f2e8c9] truncate">{trip.name}</h1>
+        <h1 className="text-lg font-semibold truncate" style={{ color: 'var(--color-text-base)' }}>{trip.name}</h1>
       </div>
-      <p className="text-xs text-[#9a7040] mb-4 pl-1">
+      <p className="text-xs mb-4 pl-1" style={{ color: 'var(--color-text-muted)' }}>
         {trip.startDate}{trip.endDate ? ` — ${trip.endDate}` : ' · 進行中'}
       </p>
 
       {/* Summary row */}
-      <div className="beast-card rounded-xl p-3 mb-4 flex gap-4"
-        style={{ background: '#1a1208', border: '1px solid #3d2e14' }}>
+      <div className="glass-card p-3 mb-4 flex gap-4">
         <div className="flex-1 text-center">
-          <p className="text-[10px] text-[#9a7040] uppercase tracking-wider mb-0.5">總消費</p>
-          <p className="font-semibold text-[#f2e8c9]">NT${totalSpend.toLocaleString()}</p>
+          <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: 'var(--color-text-muted)' }}>總消費</p>
+          <p className="font-semibold" style={{ color: 'var(--color-text-base)' }}>NT${totalSpend.toLocaleString()}</p>
         </div>
-        <div className="w-px" style={{ background: '#3d2e14' }} />
+        <div className="w-px" style={{ background: 'var(--color-border)' }} />
         <div className="flex-1 text-center">
-          <p className="text-[10px] text-[#9a7040] uppercase tracking-wider mb-0.5">總回饋</p>
-          <p className="font-semibold" style={{ color: '#4ade80' }}>NT${totalReward.toLocaleString()}</p>
+          <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: 'var(--color-text-muted)' }}>總回饋</p>
+          <p className="font-semibold" style={{ color: 'var(--color-success)' }}>NT${totalReward.toLocaleString()}</p>
         </div>
-        <div className="w-px" style={{ background: '#3d2e14' }} />
+        <div className="w-px" style={{ background: 'var(--color-border)' }} />
         <div className="flex-1 text-center">
-          <p className="text-[10px] text-[#9a7040] uppercase tracking-wider mb-0.5">總筆數</p>
-          <p className="font-semibold text-[#f2e8c9]">{trip.expenses.length} 筆</p>
+          <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: 'var(--color-text-muted)' }}>總筆數</p>
+          <p className="font-semibold" style={{ color: 'var(--color-text-base)' }}>{trip.expenses.length} 筆</p>
         </div>
       </div>
 
       {trip.expenses.length === 0 ? (
-        <p className="text-[#9a7040] text-sm text-center py-8">此旅程尚無消費記錄</p>
+        <p className="text-sm text-center py-8" style={{ color: 'var(--color-text-muted)' }}>此旅程尚無消費記錄</p>
       ) : (
         <>
           {/* Date chip strip */}
@@ -82,8 +81,8 @@ export default function TripDetailPage({ trip, cards, onBack }: Props) {
                   onClick={() => setSelectedDay(date)}
                   className="flex flex-col items-center shrink-0 rounded-full w-12 py-1.5 transition-colors"
                   style={isSelected
-                    ? { background: '#d4a017', color: '#1a1208' }
-                    : { border: '1px solid #d4a017', color: '#d4a017', background: 'transparent' }
+                    ? { background: 'var(--color-secondary)', color: '#fff' }
+                    : { border: '1px solid var(--color-secondary)', color: 'var(--color-secondary)', background: 'transparent' }
                   }
                 >
                   <span className="text-sm font-semibold leading-none">{dayOfMonth(date)}</span>
@@ -95,10 +94,10 @@ export default function TripDetailPage({ trip, cards, onBack }: Props) {
 
           {/* Daily subtotal */}
           <div className="flex items-center justify-between mb-3 px-1">
-            <span className="text-[10px] text-[#9a7040]">{dayExpenses.length} 筆</span>
-            <div className="text-[10px] text-[#9a7040]">
-              消費 <span className="text-[#c8a060]">NT${daySpend.toLocaleString()}</span>
-              {' · '}回饋 <span style={{ color: '#4ade80' }}>NT${dayReward.toLocaleString()}</span>
+            <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>{dayExpenses.length} 筆</span>
+            <div className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
+              消費 <span style={{ color: 'var(--color-text-base)' }}>NT${daySpend.toLocaleString()}</span>
+              {' · '}回饋 <span style={{ color: 'var(--color-success)' }}>NT${dayReward.toLocaleString()}</span>
             </div>
           </div>
 
@@ -107,29 +106,27 @@ export default function TripDetailPage({ trip, cards, onBack }: Props) {
             {dayExpenses.map(e => {
               const card = cards.find(c => c.id === e.cardId)
               return (
-                <div key={e.id}
-                  className="beast-card rounded-xl p-3"
-                  style={{ background: '#1a1208', border: '1px solid #3d2e14' }}>
+                <div key={e.id} className="glass-card p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs text-[#9a7040]">{e.store ?? '一般消費'}</p>
-                      <p className="font-medium text-[#f2e8c9]">
+                      <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{e.store ?? '一般消費'}</p>
+                      <p className="font-medium" style={{ color: 'var(--color-text-base)' }}>
                         {e.foreignAmount
                           ? `¥${e.foreignAmount.amount.toLocaleString()} (NT$${e.amount.toLocaleString()})`
                           : `NT$${e.amount.toLocaleString()}`}
                       </p>
-                      <p className="text-xs text-[#c8a060] mt-0.5">
+                      <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
                         {card?.name ?? '已刪除的卡片'}
                         {e.rewardBreakdown && (
                           <span className="ml-1 px-1.5 py-0.5 rounded text-[10px]"
-                            style={{ background: 'rgba(212,160,23,0.12)', color: '#d4a017', border: '1px solid rgba(212,160,23,0.2)' }}>
+                            style={{ background: 'rgba(245,166,35,0.12)', color: 'var(--color-secondary)', border: '1px solid rgba(245,166,35,0.25)' }}>
                             {e.rewardBreakdown.effectiveRate}%
                           </span>
                         )}
                       </p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-xs" style={{ color: '#4ade80' }}>回饋 NT${e.estimatedReward.toLocaleString()}</p>
+                      <p className="text-xs" style={{ color: 'var(--color-success)' }}>回饋 NT${e.estimatedReward.toLocaleString()}</p>
                     </div>
                   </div>
                 </div>

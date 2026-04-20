@@ -1,17 +1,57 @@
 @import "tailwindcss";
 
-/* ── Beast RPG Theme ─────────────────────────────── */
+/* ── Theme tokens: Dark (default) ───────────────────── */
+:root,
+[data-theme="dark"] {
+  --color-bg-from: #0a1628;
+  --color-bg-to: #0d2040;
+  --color-bg-surface: rgba(26, 58, 92, 0.45);
+  --color-primary: #1A3A5C;
+  --color-secondary: #F5A623;
+  --color-accent: #00B9B5;
+  --color-text-base: #E8F0F8;
+  --color-text-muted: #8BA5C0;
+  --color-border: rgba(255, 255, 255, 0.15);
+  --color-input-bg: rgba(10, 22, 40, 0.7);
+  --color-input-border: rgba(255, 255, 255, 0.15);
+  --color-input-focus: #00B9B5;
+  --color-scrollbar: rgba(255, 255, 255, 0.2);
+  --color-danger: #f87171;
+  --color-success: #4ade80;
+  --color-option-bg: #0d2040;
+  --color-calendar-bg: #0e1e35;
+}
 
+/* ── Theme tokens: Light ────────────────────────────── */
+[data-theme="light"] {
+  --color-bg-from: #E8F4F8;
+  --color-bg-to: #D6EAF0;
+  --color-bg-surface: rgba(255, 255, 255, 0.6);
+  --color-primary: #1A3A5C;
+  --color-secondary: #e08a00;
+  --color-accent: #009490;
+  --color-text-base: #0D1B2A;
+  --color-text-muted: #4A6A8A;
+  --color-border: rgba(26, 58, 92, 0.18);
+  --color-input-bg: rgba(255, 255, 255, 0.8);
+  --color-input-border: rgba(26, 58, 92, 0.2);
+  --color-input-focus: #009490;
+  --color-scrollbar: rgba(26, 58, 92, 0.2);
+  --color-danger: #dc2626;
+  --color-success: #16a34a;
+  --color-option-bg: #E8F4F8;
+  --color-calendar-bg: #ffffff;
+}
+
+/* ── Base ───────────────────────────────────────────── */
 body {
   margin: 0;
   font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background:
-    radial-gradient(ellipse at 15% 0%, rgba(180, 110, 0, 0.07) 0%, transparent 55%),
-    radial-gradient(ellipse at 85% 100%, rgba(120, 40, 0, 0.06) 0%, transparent 55%),
-    #0d0a06;
-  color: #f2e8c9;
+  background: linear-gradient(135deg, var(--color-bg-from) 0%, var(--color-bg-to) 100%);
+  background-attachment: fixed;
+  color: var(--color-text-base);
   min-height: 100dvh;
 }
 
@@ -19,65 +59,57 @@ body {
   min-height: 100dvh;
 }
 
-/* ── Global Input / Select Override ─────────────── */
+/* ── Glassmorphism Components ───────────────────────── */
+@layer components {
+  .glass-card {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    background: var(--color-bg-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+  }
+
+  .glass-nav {
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    background: var(--color-bg-surface);
+    border-top: 1px solid var(--color-border);
+  }
+}
+
+/* ── Global Input / Select ──────────────────────────── */
 input, select, textarea {
-  background: #1a1208 !important;
-  color: #f2e8c9 !important;
-  border-color: #4a3418 !important;
+  background: var(--color-input-bg) !important;
+  color: var(--color-text-base) !important;
+  border-color: var(--color-input-border) !important;
 }
 input::placeholder, textarea::placeholder {
-  color: #6a5030 !important;
+  color: var(--color-text-muted) !important;
+  opacity: 1;
 }
 input:focus, select:focus, textarea:focus {
-  border-color: #c8901a !important;
-  box-shadow: 0 0 0 2px rgba(200, 144, 26, 0.2) !important;
+  border-color: var(--color-input-focus) !important;
+  box-shadow: 0 0 0 2px rgba(0, 185, 181, 0.25) !important;
   outline: none !important;
 }
 input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(1);
   cursor: pointer;
-}
-select option {
-  background: #1a1208;
-  color: #f2e8c9;
-}
-
-/* ── Scrollbar ───────────────────────────────────── */
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: #0d0a06; }
-::-webkit-scrollbar-thumb { background: #3a2810; border-radius: 2px; }
-
-/* ── Gold shimmer animation ──────────────────────── */
-@keyframes goldShimmer {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-.gold-pulse { animation: goldShimmer 2.5s ease-in-out infinite; }
-
-/* ── Decorative corner brackets ─────────────────── */
-.beast-card {
-  position: relative;
-}
-.beast-card::before,
-.beast-card::after {
-  content: '';
-  position: absolute;
-  width: 10px;
-  height: 10px;
-  border-color: #c8901a;
-  border-style: solid;
   opacity: 0.6;
 }
-.beast-card::before {
-  top: -1px; left: -1px;
-  border-width: 2px 0 0 2px;
+[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
 }
-.beast-card::after {
-  bottom: -1px; right: -1px;
-  border-width: 0 2px 2px 0;
+select option {
+  background: var(--color-option-bg);
+  color: var(--color-text-base);
 }
 
-/* ── Canvas inside dark panels ───────────────────── */
+/* ── Scrollbar ──────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-scrollbar); border-radius: 2px; }
+
+/* ── Canvas ─────────────────────────────────────────── */
 canvas {
   border-radius: 4px;
 }

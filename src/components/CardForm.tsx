@@ -98,9 +98,11 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
   function sectionStyle(id: string) {
     const isActive = focusedSection === id
     return {
-      background: '#1a1208',
-      border: `1px solid ${isActive ? '#c8901a' : '#4a3418'}`,
-      boxShadow: isActive ? '0 0 0 2px rgba(200,144,26,0.15)' : 'none',
+      backdropFilter: 'blur(12px)',
+      WebkitBackdropFilter: 'blur(12px)',
+      background: 'var(--color-bg-surface)',
+      border: `1px solid ${isActive ? 'var(--color-secondary)' : 'var(--color-border)'}`,
+      boxShadow: isActive ? '0 0 0 2px rgba(245,166,35,0.15)' : 'none',
       transition: 'border-color 0.15s, box-shadow 0.15s',
     }
   }
@@ -465,7 +467,7 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
   }
 
   const inputClass = "w-full border rounded-lg px-3 py-2 focus:outline-none"
-  const inlineNumStyle = { background: '#0d0a06', borderColor: '#3a2810', color: '#c8a060' }
+  const inlineNumStyle = { background: 'var(--color-input-bg)', borderColor: 'var(--color-input-border)', color: 'var(--color-text-muted)' }
 
   // ── Task 3 & 4 & 5 & 6: Bonus list renderer ──────────────────────────────
 
@@ -476,7 +478,7 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
 
     return (
       <div className="mt-1.5 space-y-1.5 rounded-lg p-2"
-        style={{ background: '#0d0a06', border: '1px solid #2a1e0a' }}>
+        style={{ background: 'var(--color-input-bg)', border: '1px solid var(--color-border)' }}>
         {/* Label input – only for named subcategories */}
         {!isDefault && (
           <input
@@ -500,7 +502,7 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
           />
           <button type="button" onClick={() => addStoreToGroup(type, bonusIdx, subIdx)}
             className="text-xs px-2 py-0.5 rounded border"
-            style={{ color: '#c8a060', borderColor: '#4a3418', background: '#141008' }}>
+            style={{ color: 'var(--color-text-muted)', borderColor: '#4a3418', background: 'var(--color-bg-surface)' }}>
             加入
           </button>
         </div>
@@ -509,7 +511,7 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
           <div className="flex flex-wrap gap-1">
             {currentStores.map(s => (
               <span key={s} className="text-xs flex items-center gap-0.5 px-1.5 py-0.5 rounded"
-                style={{ background: 'rgba(90,63,26,0.3)', color: '#b89444', border: '1px solid #3a2810' }}>
+                style={{ background: 'rgba(0,185,181,0.1)', color: 'var(--color-accent)', border: '1px solid rgba(0,185,181,0.25)' }}>
                 {s}
                 <button type="button" onClick={() => removeStoreFromGroup(type, bonusIdx, subIdx, s)}
                   className="ml-0.5 opacity-60 hover:opacity-100 text-[10px]">×</button>
@@ -522,13 +524,13 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
           {!isDefault && subIdx !== null ? (
             <button type="button" onClick={() => deleteSubCategory(type, bonusIdx, subIdx)}
               className="text-[10px] px-1.5 py-0.5 rounded border"
-              style={{ color: '#c0392b', borderColor: '#5a1a1a' }}>
+              style={{ color: 'var(--color-danger)', borderColor: '#5a1a1a' }}>
               刪除此分類
             </button>
           ) : <span />}
           <button type="button" onClick={() => setExpandedGroupKey(null)}
             className="text-[10px] px-2 py-0.5 rounded border"
-            style={{ color: '#c8a060', borderColor: '#4a3418', background: '#1a1208' }}>
+            style={{ color: 'var(--color-text-muted)', borderColor: '#4a3418', background: '#1a1208' }}>
             完成
           </button>
         </div>
@@ -544,9 +546,9 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
       return (
         <div key={bonusIdx} className="rounded-xl p-3"
           style={{
-            background: '#141008',
+            background: 'var(--color-bg-surface)',
             border: '1px solid #3d2e14',
-            ...(b.prerequisite ? { borderLeft: '3px solid #f59e0b' } : {}),
+            ...(b.prerequisite ? { borderLeft: '3px solid var(--color-accent)' } : {}),
           }}>
           {/* Header row: storeName + prereq badge | +分類 刪除 */}
           <div className="flex items-start justify-between">
@@ -554,7 +556,7 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
               <span className="font-medium text-[#f2e8c9]">{b.storeName}</span>
               {b.prerequisite && (
                 <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded"
-                  style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)' }}>
+                  style={{ background: 'rgba(0,185,181,0.1)', color: 'var(--color-accent)', border: '1px solid rgba(0,185,181,0.3)' }}>
                   {b.prerequisite}
                 </span>
               )}
@@ -567,8 +569,8 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
                   className="border rounded px-1.5 py-0.5 text-xs focus:outline-none"
                   style={{ ...inlineNumStyle, width: '44px' }}
                 />
-                <span className="text-xs text-[#9a7040]">%</span>
-                <span className="text-xs text-[#9a7040]">·</span>
+                <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>%</span>
+                <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>·</span>
                 <input
                   type="number" min="0"
                   value={b.cap}
@@ -576,9 +578,9 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
                   className="border rounded px-1.5 py-0.5 text-xs focus:outline-none"
                   style={{ ...inlineNumStyle, width: '64px' }}
                 />
-                <span className="text-xs text-[#9a7040]">NT$</span>
+                <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>NT$</span>
                 <span className="text-[10px] px-1 py-0.5 rounded"
-                  style={{ background: 'rgba(200,144,26,0.1)', color: '#8a6f28' }}>
+                  style={{ background: 'rgba(245,166,35,0.1)', color: 'var(--color-text-muted)' }}>
                   {b.capPeriod === 'period' ? '期間' : '每月'}
                 </span>
               </div>
@@ -592,12 +594,12 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
                   setNewSubCatNameInput('')
                 }}
                 className="text-xs px-2 py-1 rounded-lg border transition-colors"
-                style={{ color: '#c8a060', borderColor: '#4a3418' }}>
+                style={{ color: 'var(--color-text-muted)', borderColor: '#4a3418' }}>
                 ＋分類
               </button>
               <button type="button" onClick={() => removeBonus(type, bonusIdx)}
                 className="text-xs px-2 py-1 rounded-lg border transition-colors"
-                style={{ color: '#c0392b', borderColor: '#5a1a1a' }}>
+                style={{ color: 'var(--color-danger)', borderColor: '#5a1a1a' }}>
                 刪除
               </button>
             </div>
@@ -612,13 +614,13 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
                   return (
                     <div key={si}>
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] uppercase tracking-wider" style={{ color: '#9a7040' }}>
+                        <span className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>
                           {sub.label}
                         </span>
                         <button type="button"
                           onClick={() => isOpen ? setExpandedGroupKey(null) : openGroupEditor(gKey, sub.label)}
                           className="text-[10px] px-1.5 py-0.5 rounded border transition-colors"
-                          style={{ color: '#c8a060', borderColor: '#4a3418' }}>
+                          style={{ color: 'var(--color-text-muted)', borderColor: '#4a3418' }}>
                           {isOpen ? '收起' : '編輯'}
                         </button>
                       </div>
@@ -628,7 +630,7 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
                           <div className="flex flex-wrap gap-1 mt-0.5">
                             {sub.stores.map(s => (
                               <span key={s} className="text-xs px-1.5 py-0.5 rounded"
-                                style={{ background: 'rgba(90,63,26,0.3)', color: '#b89444', border: '1px solid #3a2810' }}>
+                                style={{ background: 'rgba(0,185,181,0.1)', color: 'var(--color-accent)', border: '1px solid rgba(0,185,181,0.25)' }}>
                                 {s}
                               </span>
                             ))}
@@ -644,13 +646,13 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
                   return (
                     <div>
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] uppercase tracking-wider" style={{ color: '#9a7040' }}>
+                        <span className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>
                           適用店家
                         </span>
                         <button type="button"
                           onClick={() => isOpen ? setExpandedGroupKey(null) : openGroupEditor(gKey, '')}
                           className="text-[10px] px-1.5 py-0.5 rounded border transition-colors"
-                          style={{ color: '#c8a060', borderColor: '#4a3418' }}>
+                          style={{ color: 'var(--color-text-muted)', borderColor: '#4a3418' }}>
                           {isOpen ? '收起' : '編輯'}
                         </button>
                       </div>
@@ -660,7 +662,7 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
                           <div className="flex flex-wrap gap-1 mt-0.5">
                             {b.stores.map(s => (
                               <span key={s} className="text-xs px-1.5 py-0.5 rounded"
-                                style={{ background: 'rgba(90,63,26,0.3)', color: '#b89444', border: '1px solid #3a2810' }}>
+                                style={{ background: 'rgba(0,185,181,0.1)', color: 'var(--color-accent)', border: '1px solid rgba(0,185,181,0.25)' }}>
                                 {s}
                               </span>
                             ))}
@@ -675,8 +677,8 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
             {/* Task 6.1 & 6.2 & 6.3: +分類 inline form */}
             {addingSubCatForBonusIdx?.type === type && addingSubCatForBonusIdx.idx === bonusIdx && (
               <div className="rounded-lg p-2 space-y-1.5 mt-1"
-                style={{ background: '#0d0a06', border: '1px dashed #3a2810' }}>
-                <p className="text-[10px] uppercase tracking-wider" style={{ color: '#9a7040' }}>新增分類</p>
+                style={{ background: 'var(--color-input-bg)', border: '1px dashed var(--color-border)' }}>
+                <p className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>新增分類</p>
                 <input
                   value={newSubCatNameInput}
                   onChange={e => setNewSubCatNameInput(e.target.value)}
@@ -689,12 +691,12 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
                   <button type="button" onClick={() => commitNewSubCategory(type, bonusIdx)}
                     disabled={!newSubCatNameInput.trim()}
                     className="flex-1 text-xs py-1 rounded border disabled:opacity-30"
-                    style={{ color: '#c8a060', borderColor: '#4a3418', background: '#141008' }}>
+                    style={{ color: 'var(--color-text-muted)', borderColor: '#4a3418', background: 'var(--color-bg-surface)' }}>
                     新增分類
                   </button>
                   <button type="button" onClick={() => setAddingSubCatForBonusIdx(null)}
                     className="text-xs px-2 py-1 rounded border"
-                    style={{ color: '#9a7040', borderColor: '#3a2810' }}>
+                    style={{ color: 'var(--color-text-muted)', borderColor: 'var(--color-border)' }}>
                     取消
                   </button>
                 </div>
@@ -713,8 +715,8 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
                   className="mt-0.5"
                 />
                 <span>
-                  <span className="text-xs text-[#c8a060]">我目前符合此條件</span>
-                  <span className="block text-xs mt-0.5" style={{ color: '#9a5020' }}>
+                  <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>我目前符合此條件</span>
+                  <span className="block text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
                     未勾選時此加碼不會計入回饋
                   </span>
                 </span>
@@ -732,10 +734,10 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
 
     if (!showForm) {
       return (
-        <div className="mt-3 pt-3" style={{ borderTop: '1px dashed #3d2e14' }}>
+        <div className="mt-3 pt-3" style={{ borderTop: '1px dashed var(--color-border)' }}>
           <button type="button" onClick={() => setShowForm(true)}
             className="w-full text-xs py-1.5 rounded-lg border transition-colors"
-            style={{ borderColor: '#4a3418', color: '#c8a060', background: 'transparent' }}>
+            style={{ borderColor: '#4a3418', color: 'var(--color-text-muted)', background: 'transparent' }}>
             ＋ {type === 'store' ? '新增加碼' : '新增新戶加碼'}
           </button>
         </div>
@@ -753,7 +755,7 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
       : (v: 'monthly' | 'period') => setNewNubBonusCapPeriod(v)
 
     return (
-      <div className="mt-3 pt-3 space-y-2" style={{ borderTop: '1px dashed #3d2e14' }}>
+      <div className="mt-3 pt-3 space-y-2" style={{ borderTop: '1px dashed var(--color-border)' }}>
         <input
           value={store}
           onChange={e => setStore(e.target.value)}
@@ -772,26 +774,26 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
           <button type="button" onClick={() => setPeriod('monthly')}
             className="flex-1 py-1.5 rounded text-xs border transition-all"
             style={period === 'monthly'
-              ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a' }
-              : { background: 'transparent', color: '#c8a060', borderColor: '#3a2810' }}>
+              ? { background: 'var(--color-secondary)', color: '#fff', borderColor: 'var(--color-secondary)' }
+              : { background: 'transparent', color: 'var(--color-text-muted)', borderColor: 'var(--color-border)' }}>
             每月重置
           </button>
           <button type="button" onClick={() => setPeriod('period')}
             className="flex-1 py-1.5 rounded text-xs border transition-all"
             style={period === 'period'
-              ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a' }
-              : { background: 'transparent', color: '#c8a060', borderColor: '#3a2810' }}>
+              ? { background: 'var(--color-secondary)', color: '#fff', borderColor: 'var(--color-secondary)' }
+              : { background: 'transparent', color: 'var(--color-text-muted)', borderColor: 'var(--color-border)' }}>
             活動期間
           </button>
           <button type="button" onClick={() => { addBonus(type); setShowForm(false) }}
             className="text-sm px-3 py-1.5 rounded transition-colors"
-            style={{ background: '#3d2e14', color: '#b89444', border: '1px solid #3a2810' }}>
+            style={{ background: 'var(--color-bg-surface)', color: 'var(--color-secondary)', border: '1px solid #3a2810' }}>
             新增
           </button>
         </div>
         <button type="button" onClick={() => setShowForm(false)}
           className="text-xs w-full text-center transition-colors"
-          style={{ color: '#6a5030' }}>
+          style={{ color: 'var(--color-text-muted)' }}>
           取消
         </button>
       </div>
@@ -803,11 +805,11 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
       <div className="relative flex items-center mb-4">
         <button onClick={onCancel}
           className="text-sm transition-colors flex items-center gap-1"
-          style={{ color: '#c8901a' }}>
+          style={{ color: 'var(--color-secondary)' }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
           返回
         </button>
-        <h1 className="absolute left-1/2 -translate-x-1/2 text-lg font-semibold text-[#f2e8c9]">{card ? '編輯卡片' : '新增卡片'}</h1>
+        <h1 className="absolute left-1/2 -translate-x-1/2 text-lg font-semibold" style={{ color: 'var(--color-text-base)' }}>{card ? '編輯卡片' : '新增卡片'}</h1>
       </div>
 
       {/* ── Import panel ── */}
@@ -818,24 +820,23 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
               type="button"
               onClick={() => { setShowImportPanel(true); setImportError(null); setMissingFields([]) }}
               className="w-full border border-dashed text-sm py-2.5 rounded-xl transition-colors"
-              style={{ borderColor: '#c8901a', color: '#c8901a' }}
+              style={{ borderColor: 'var(--color-secondary)', color: 'var(--color-secondary)' }}
             >
               從銀行活動網址自動匯入
             </button>
           ) : (
-            <div className="beast-card rounded-xl p-4 space-y-3"
-              style={{ background: '#181308', border: '1px solid #3a2810' }}
+            <div className="glass-card p-4 space-y-3"
               onPaste={handlePaste}>
               <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-[#c8901a]">從活動網址匯入（{provider === 'gemini' ? 'Gemini' : 'Claude'}）</p>
+                <p className="text-sm font-medium" style={{ color: 'var(--color-secondary)' }}>從活動網址匯入（{provider === 'gemini' ? 'Gemini' : 'Claude'}）</p>
                 <button type="button"
                   onClick={() => { setShowImportPanel(false); setImportError(null); setImportImage(null) }}
-                  className="text-xs text-[#9a7040]">關閉</button>
+                  className="text-xs" style={{ color: 'var(--color-text-muted)' }}>關閉</button>
               </div>
 
               {!apiKey && (
                 <p className="text-xs rounded-lg px-3 py-2"
-                  style={{ background: '#1a1005', border: '1px solid #5a3010', color: '#c8841a' }}>
+                  style={{ background: 'rgba(245,166,35,0.08)', border: '1px solid rgba(245,166,35,0.3)', color: 'var(--color-secondary)' }}>
                   請先至「設定」頁面輸入 API Key 才能使用自動匯入。
                 </p>
               )}
@@ -852,22 +853,22 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
                 onClick={handleUrlImport}
                 disabled={importing || !importUrl.trim() || !apiKey}
                 className="w-full text-sm py-2 rounded font-medium transition-all disabled:opacity-30"
-                style={{ background: 'linear-gradient(135deg, #c8901a, #d4a017)', color: '#0d0a06' }}
+                style={{ background: 'var(--color-secondary)', color: '#fff' }}
               >
                 {importing ? '擷取中…' : '自動擷取'}
               </button>
 
               <div>
-                <p className="text-[10px] uppercase tracking-wider mb-2" style={{ color: '#9a7040' }}>或從截圖辨識</p>
+                <p className="text-[10px] uppercase tracking-wider mb-2" style={{ color: 'var(--color-text-muted)' }}>或從截圖辨識</p>
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   className="w-full text-xs py-2 rounded-lg border transition-colors"
-                  style={{ borderColor: '#4a3418', color: '#c8a060', background: 'transparent' }}
+                  style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-muted)', background: 'transparent' }}
                 >
                   選擇圖片檔案
                 </button>
-                <p className="text-[10px] mt-1.5 text-center" style={{ color: '#6a5030' }}>
+                <p className="text-[10px] mt-1.5 text-center" style={{ color: 'var(--color-text-muted)' }}>
                   也可直接 Ctrl+V 貼上截圖
                 </p>
                 <input
@@ -885,16 +886,16 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
                   <div className="mt-2 space-y-2">
                     <img src={importImage.preview} alt="截圖預覽"
                       className="w-full rounded-lg max-h-40 object-contain"
-                      style={{ border: '1px solid #3a2810' }} />
+                      style={{ border: '1px solid var(--color-border)' }} />
                     <button type="button" onClick={handleImageImport}
                       disabled={importing || !apiKey}
                       className="w-full text-sm py-2 rounded font-medium transition-all disabled:opacity-30"
-                      style={{ background: 'linear-gradient(135deg, #c8901a, #d4a017)', color: '#0d0a06' }}>
+                      style={{ background: 'var(--color-secondary)', color: '#fff' }}>
                       {importing ? '辨識中…' : '開始辨識'}
                     </button>
                     <button type="button" onClick={() => setImportImage(null)}
                       className="w-full text-xs py-1 rounded border transition-colors"
-                      style={{ borderColor: '#3a2810', color: '#9a7040' }}>
+                      style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-muted)' }}>
                       移除截圖
                     </button>
                   </div>
@@ -902,7 +903,7 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
               </div>
 
               <button type="button" onClick={() => setShowHtmlFallback(v => !v)}
-                className="text-xs underline" style={{ color: '#9a7040' }}>
+                className="text-xs underline" style={{ color: 'var(--color-text-muted)' }}>
                 {showHtmlFallback ? '收起' : '網址無法抓取？手動貼入頁面 HTML'}
               </button>
               {showHtmlFallback && (
@@ -917,7 +918,7 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
                   <button type="button" onClick={handleHtmlImport}
                     disabled={importing || !manualHtml.trim() || !apiKey}
                     className="w-full text-sm py-2 rounded font-medium border transition-all disabled:opacity-30"
-                    style={{ borderColor: '#3a2810', color: '#c8a060', background: '#141008' }}>
+                    style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-muted)', background: 'var(--color-bg-surface)' }}>
                     {importing ? '解析中…' : '解析 HTML'}
                   </button>
                 </div>
@@ -925,7 +926,7 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
 
               {importError && (
                 <p className="text-xs rounded-lg px-3 py-2"
-                  style={{ background: '#1a0808', border: '1px solid #5a1010', color: '#c0392b' }}>
+                  style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.3)', color: 'var(--color-danger)' }}>
                   {importError}
                 </p>
               )}
@@ -934,7 +935,7 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
 
           {missingFields.length > 0 && (
             <p className="mt-2 text-xs rounded-lg px-3 py-2"
-              style={{ background: '#1a1005', border: '1px solid #5a3010', color: '#c8841a' }}>
+              style={{ background: 'rgba(245,166,35,0.08)', border: '1px solid rgba(245,166,35,0.3)', color: 'var(--color-secondary)' }}>
               以下欄位未能自動填入，請手動補完：{missingFields.join('、')}
             </p>
           )}
@@ -943,98 +944,98 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* ── Basic info ── */}
-        <div className="beast-card rounded-xl p-4 space-y-3" style={sectionStyle('basic')}
+        <div className="glass-card rounded-xl p-4 space-y-3" style={sectionStyle('basic')}
           onFocus={() => handleSectionFocus('basic')}
           onBlur={e => handleSectionBlur(e, 'basic')}>
           <div>
-            <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">卡片名稱</label>
+            <label className="text-xs block mb-1 uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>卡片名稱</label>
             <input value={name} onChange={e => handleNameChange(e.target.value)}
               placeholder="例：國泰 Cube" className={inputClass} />
             <div className="flex flex-wrap gap-1 mt-1.5">
               {['國泰 Cube', '吉鶴卡', '全支付', 'Line Bank'].map(n => (
                 <button key={n} type="button" onClick={() => handleNameChange(n)}
                   className="text-xs px-2 py-0.5 rounded transition-colors"
-                  style={{ background: 'rgba(200,144,26,0.1)', color: '#b89444', border: '1px solid rgba(200,144,26,0.2)' }}>
+                  style={{ background: 'rgba(245,166,35,0.1)', color: 'var(--color-secondary)', border: '1px solid rgba(245,166,35,0.25)' }}>
                   {n}
                 </button>
               ))}
             </div>
           </div>
           <div>
-            <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">銀行活動頁面連結（選填）</label>
+            <label className="text-xs block mb-1 uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>銀行活動頁面連結（選填）</label>
             <input value={bankUrl} onChange={e => setBankUrl(e.target.value)}
               placeholder="https://..." type="url" className={inputClass} />
             {bankUrl && (
               <a href={bankUrl} target="_blank" rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-xs mt-1.5 transition-colors"
-                style={{ color: '#c8901a' }}>
+                style={{ color: 'var(--color-secondary)' }}>
                 前往活動頁面 ↗
               </a>
             )}
           </div>
-          <hr style={{ borderColor: '#3a2810', margin: '4px 0' }} />
+          <hr style={{ borderColor: 'var(--color-border)', margin: '4px 0' }} />
           <div>
-            <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">海外一般回饋 %</label>
+            <label className="text-xs block mb-1 uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>海外一般回饋 %</label>
             <input value={baseRate} onChange={e => setBaseRate(e.target.value)}
               type="number" step="0.1" min="0" max="100" placeholder="例：3" className={inputClass} />
           </div>
           <div className="flex gap-2">
             <div className="flex-1">
-              <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">每月回饋上限（NT$）</label>
+              <label className="text-xs block mb-1 uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>每月回饋上限（NT$）</label>
               <input value={rewardCap} onChange={e => setRewardCap(e.target.value)}
                 type="number" min="0" placeholder="例：1500" className={inputClass} />
             </div>
             <div className="flex-1">
-              <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">每月消費上限（NT$）</label>
+              <label className="text-xs block mb-1 uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>每月消費上限（NT$）</label>
               <input value={spendCap} onChange={e => setSpendCap(e.target.value)}
                 type="number" min="0" placeholder="例：50000" className={inputClass} />
             </div>
           </div>
-          <hr style={{ borderColor: '#3a2810', margin: '4px 0' }} />
+          <hr style={{ borderColor: 'var(--color-border)', margin: '4px 0' }} />
           <div className="flex gap-2">
             <div className="flex-1">
-              <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">活動開始日（選填）</label>
+              <label className="text-xs block mb-1 uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>活動開始日（選填）</label>
               <DatePicker value={validFrom} onChange={setValidFrom} className={inputClass} />
             </div>
             <div className="flex-1">
-              <label className="text-xs text-[#c8a060] block mb-1 uppercase tracking-wider">活動結束日（選填）</label>
+              <label className="text-xs block mb-1 uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>活動結束日（選填）</label>
               <DatePicker value={validTo} onChange={setValidTo} className={inputClass} />
             </div>
           </div>
         </div>
 
         {/* ── New user bonus section ── */}
-        <div className="beast-card rounded-xl p-4" style={sectionStyle('nub')}
+        <div className="glass-card rounded-xl p-4" style={sectionStyle('nub')}
           onFocus={() => handleSectionFocus('nub')}
           onBlur={e => handleSectionBlur(e, 'nub')}>
-          <h3 className="text-sm font-semibold text-[#f59e0b] mb-3 pl-3 uppercase tracking-widest"
-            style={{ borderLeft: '3px solid #f59e0b' }}>新戶加碼</h3>
+          <h3 className="text-sm font-semibold mb-3 pl-3 uppercase tracking-widest"
+            style={{ color: 'var(--color-accent)', borderLeft: '3px solid var(--color-accent)' }}>新戶加碼</h3>
           <div className="space-y-2">{renderBonusList('nub')}</div>
           {renderAddBonusForm('nub')}
         </div>
 
         {/* ── Store bonus section ── */}
-        <div className="beast-card rounded-xl p-4" style={sectionStyle('store')}
+        <div className="glass-card rounded-xl p-4" style={sectionStyle('store')}
           onFocus={() => handleSectionFocus('store')}
           onBlur={e => handleSectionBlur(e, 'store')}>
-          <h3 className="text-sm font-semibold text-[#d4a017] mb-3 pl-3 uppercase tracking-widest"
-            style={{ borderLeft: '3px solid #c8901a' }}>特定店家加碼</h3>
+          <h3 className="text-sm font-semibold mb-3 pl-3 uppercase tracking-widest"
+            style={{ color: 'var(--color-secondary)', borderLeft: '3px solid var(--color-secondary)' }}>特定店家加碼</h3>
           <div className="space-y-2">{renderBonusList('store')}</div>
           {renderAddBonusForm('store')}
         </div>
 
         {/* ── Payment method bonus ── */}
-        <div className="beast-card rounded-xl p-4" style={sectionStyle('payment')}
+        <div className="glass-card rounded-xl p-4" style={sectionStyle('payment')}
           onFocus={() => handleSectionFocus('payment')}
           onBlur={e => handleSectionBlur(e, 'payment')}>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-[#d4a017] pl-3 uppercase tracking-widest"
-              style={{ borderLeft: '3px solid #c8901a' }}>行動支付加碼</h3>
+            <h3 className="text-sm font-semibold pl-3 uppercase tracking-widest"
+              style={{ color: 'var(--color-secondary)', borderLeft: '3px solid var(--color-secondary)' }}>行動支付加碼</h3>
             <button type="button" onClick={() => setPmBonusEnabled(v => !v)}
               className="text-xs px-3 py-1 rounded-lg border transition-all"
               style={pmBonusEnabled
-                ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a', fontWeight: 600 }
-                : { background: 'transparent', color: '#c8a060', borderColor: '#4a3418' }}>
+                ? { background: 'var(--color-secondary)', color: '#fff', borderColor: 'var(--color-secondary)', fontWeight: 600 }
+                : { background: 'transparent', color: 'var(--color-text-muted)', borderColor: '#4a3418' }}>
               {pmBonusEnabled ? '啟用中' : '未啟用'}
             </button>
           </div>
@@ -1042,14 +1043,14 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
           {pmBonusEnabled && (
             <div className="space-y-4">
               <div>
-                <p className="text-xs text-[#c8a060] mb-2 uppercase tracking-wider">適用付款方式</p>
+                <p className="text-xs mb-2 uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>適用付款方式</p>
                 <div className="flex gap-2">
                   {(['apple_pay', 'google_pay'] as const).map(m => (
                     <button key={m} type="button" onClick={() => togglePmMethod(m)}
                       className="flex-1 py-1.5 rounded text-xs border transition-all"
                       style={pmMethods.includes(m)
-                        ? { background: '#c8901a', color: '#0d0a06', borderColor: '#c8901a' }
-                        : { background: 'transparent', color: '#c8a060', borderColor: '#3a2810' }}>
+                        ? { background: 'var(--color-secondary)', color: '#fff', borderColor: 'var(--color-secondary)' }
+                        : { background: 'transparent', color: 'var(--color-text-muted)', borderColor: 'var(--color-border)' }}>
                       {m === 'apple_pay' ? 'Apple Pay' : 'Google Pay'}
                     </button>
                   ))}
@@ -1058,37 +1059,37 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
 
               {pmTiers.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-xs text-[#c8a060] uppercase tracking-wider">加碼層級</p>
+                  <p className="text-xs uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>加碼層級</p>
                   {pmTiers.map((tier, idx) => (
                     <div key={idx} className="rounded-lg p-3 space-y-2"
-                      style={{ background: '#141008', border: '1px solid #3d2e14' }}>
+                      style={{ background: 'var(--color-bg-surface)', border: '1px solid #3d2e14' }}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1">
-                          <span className="text-xs text-[#9a7040]">+</span>
+                          <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>+</span>
                           <input type="number" step="0.1" min="0"
                             value={tier.rate}
                             onChange={e => updatePmTier(idx, { rate: parseFloat(e.target.value) || 0 })}
                             className="border rounded px-1.5 py-0.5 text-xs focus:outline-none"
-                            style={{ ...inlineNumStyle, width: '44px', color: '#f2e8c9' }} />
-                          <span className="text-xs text-[#9a7040]">%・月上限 NT$</span>
+                            style={{ ...inlineNumStyle, width: '44px', color: 'var(--color-text-base)' }} />
+                          <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>%・月上限 NT$</span>
                           <input type="number" min="0"
                             value={tier.monthlyCap}
                             onChange={e => updatePmTier(idx, { monthlyCap: parseInt(e.target.value) || 0 })}
                             className="border rounded px-1.5 py-0.5 text-xs focus:outline-none"
-                            style={{ ...inlineNumStyle, width: '68px', color: '#f2e8c9' }} />
+                            style={{ ...inlineNumStyle, width: '68px', color: 'var(--color-text-base)' }} />
                         </div>
                         <button type="button" onClick={() => removePmTier(idx)}
-                          className="text-xs ml-2" style={{ color: '#8b1a1a' }}>刪除</button>
+                          className="text-xs ml-2" style={{ color: 'var(--color-danger)' }}>刪除</button>
                       </div>
                       {tier.prerequisite && (
                         <div className="space-y-1">
-                          <p className="text-xs" style={{ color: '#9a7040' }}>條件：{tier.prerequisite}</p>
+                          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>條件：{tier.prerequisite}</p>
                           <label className="flex items-start gap-2 cursor-pointer">
                             <input type="checkbox" checked={tier.prerequisiteMet ?? false}
                               onChange={() => toggleTierPrereqMet(idx)} className="mt-0.5" />
                             <span>
-                              <span className="text-xs text-[#c8a060]">我目前符合此條件</span>
-                              <span className="block text-xs mt-0.5" style={{ color: '#9a5020' }}>
+                              <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>我目前符合此條件</span>
+                              <span className="block text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
                                 每月初請確認條件是否仍符合
                               </span>
                             </span>
@@ -1101,7 +1102,7 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
               )}
 
               <div className="space-y-2">
-                <p className="text-xs text-[#c8a060] uppercase tracking-wider">新增加碼層級</p>
+                <p className="text-xs uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>新增加碼層級</p>
                 <div className="flex gap-2">
                   <input value={newTierRate} onChange={e => setNewTierRate(e.target.value)}
                     type="number" step="0.1" min="0" placeholder="加碼 %"
@@ -1118,8 +1119,8 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
                     <input type="checkbox" checked={newTierPrereqMet}
                       onChange={e => setNewTierPrereqMet(e.target.checked)} className="mt-0.5" />
                     <span>
-                      <span className="text-xs text-[#c8a060]">我目前符合此條件</span>
-                      <span className="block text-xs mt-0.5" style={{ color: '#9a5020' }}>
+                      <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>我目前符合此條件</span>
+                      <span className="block text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
                         每月初請確認條件是否仍符合
                       </span>
                     </span>
@@ -1128,7 +1129,7 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
                 <button type="button" onClick={addPmTier}
                   disabled={!newTierRate || !newTierCap}
                   className="w-full text-sm py-1.5 rounded border transition-all disabled:opacity-30"
-                  style={{ background: '#3d2e14', color: '#b89444', border: '1px solid #3a2810' }}>
+                  style={{ background: 'var(--color-bg-surface)', color: 'var(--color-secondary)', border: '1px solid #3a2810' }}>
                   ＋ 新增層級
                 </button>
               </div>
@@ -1139,12 +1140,13 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
         <div className="flex gap-2 pb-4">
           <button type="submit" disabled={!name.trim() || !baseRate}
             className="flex-1 rounded-lg py-3 font-semibold text-sm tracking-wider transition-all disabled:opacity-30"
-            style={{ background: 'linear-gradient(135deg, #c8901a, #d4a017)', color: '#0d0a06' }}>
+            style={{ background: 'var(--color-secondary)', color: '#fff' }}>
+
             儲存
           </button>
           <button type="button" onClick={onCancel}
             className="flex-1 rounded-lg py-3 text-sm border transition-colors"
-            style={{ borderColor: '#3a2810', color: '#c8a060' }}>
+            style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-muted)', background: 'transparent' }}>
             取消
           </button>
         </div>
