@@ -5,7 +5,7 @@
 [data-theme="dark"] {
   --color-bg-from: #0a1628;
   --color-bg-to: #0d2040;
-  --color-bg-surface: rgba(26, 58, 92, 0.45);
+  --color-bg-surface: rgba(15, 35, 65, 0.92);
   --color-primary: #1A3A5C;
   --color-secondary: #F5A623;
   --color-accent: #00B9B5;
@@ -26,7 +26,7 @@
 [data-theme="light"] {
   --color-bg-from: #E8F4F8;
   --color-bg-to: #D6EAF0;
-  --color-bg-surface: rgba(255, 255, 255, 0.6);
+  --color-bg-surface: rgba(255, 255, 255, 0.95);
   --color-primary: #1A3A5C;
   --color-secondary: #e08a00;
   --color-accent: #009490;
@@ -62,8 +62,6 @@ body {
 /* ── Glassmorphism Components ───────────────────────── */
 @layer components {
   .glass-card {
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
     background: var(--color-bg-surface);
     border: 1px solid var(--color-border);
     border-radius: 0.75rem;

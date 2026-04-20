@@ -303,7 +303,7 @@ export default function TripsPage() {
                 onClick={() => setSelectedTrip(trip)}
                 className="glass-card rounded-xl p-4 cursor-pointer active:opacity-80 transition-opacity"
                 style={isActive
-                  ? { background: 'var(--color-bg-surface)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid var(--color-secondary)' }
+                  ? { background: 'var(--color-bg-surface)', border: '1px solid var(--color-secondary)' }
                   : { border: '1px solid var(--color-border)' }}
               >
                 <div className="flex items-start justify-between">

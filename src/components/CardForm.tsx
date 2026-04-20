@@ -98,8 +98,8 @@ export default function CardForm({ card, onSave, onCancel }: Props) {
   function sectionStyle(id: string) {
     const isActive = focusedSection === id
     return {
-      backdropFilter: 'blur(12px)',
-      WebkitBackdropFilter: 'blur(12px)',
+      
+      
       background: 'var(--color-bg-surface)',
       border: `1px solid ${isActive ? 'var(--color-secondary)' : 'var(--color-border)'}`,
       boxShadow: isActive ? '0 0 0 2px rgba(245,166,35,0.15)' : 'none',

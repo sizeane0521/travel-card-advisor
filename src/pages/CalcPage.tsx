@@ -301,7 +301,7 @@ export default function CalcPage() {
 
       {/* ── Calc form ── */}
       <div className="glass-card rounded-xl p-4 mb-4 space-y-4"
-        style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)' }}>
+        style={{ background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)' }}>
 
         {/* Amount input + exchange rate */}
         <div>
@@ -358,7 +358,7 @@ export default function CalcPage() {
 
       {/* ── Store section ── */}
       <div className="glass-card rounded-xl p-4 mb-4"
-        style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)' }}>
+        style={{ background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)' }}>
         <div>
           <label className="text-xs block mb-2 uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>店家</label>
 
@@ -503,7 +503,7 @@ export default function CalcPage() {
 
       {/* ── Payment method section ── */}
       <div className="glass-card rounded-xl p-4 mb-4"
-        style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)' }}>
+        style={{ background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)' }}>
         <div>
           <label className="text-xs block mb-2 uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>付款方式</label>
           <div className="flex gap-2">
@@ -531,7 +531,7 @@ export default function CalcPage() {
       {/* ── Card recommendation list ── */}
       {data.cards.length > 0 && (
         <div className="glass-card rounded-xl p-4 mb-4"
-          style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)' }}>
+          style={{ background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)' }}>
           <label className="text-xs block mb-2 uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>選擇信用卡（依回饋排序）</label>
             <div className="space-y-2">
               {sortedRecommendations.map((advice, idx) => {

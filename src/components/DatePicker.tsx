@@ -107,7 +107,7 @@ export default function DatePicker({ value, onChange, min, max, className, style
   const baseInputClass = 'w-full border rounded-lg px-3 py-2 focus:outline-none'
 
   return (
-    <div ref={containerRef} className="relative" style={style}>
+    <div ref={containerRef} className="relative" style={{ ...style, zIndex: isOpen ? 100 : undefined }}>
       {/* Trigger input */}
       <div
         onClick={() => setIsOpen(o => !o)}
@@ -127,8 +127,9 @@ export default function DatePicker({ value, onChange, min, max, className, style
       {/* Popover calendar */}
       {isOpen && (
         <div
-          className="absolute left-0 mt-1 rounded-xl p-3 z-50"
+          className="absolute left-0 mt-1 rounded-xl p-3"
           style={{
+            zIndex: 200,
             background: 'var(--color-calendar-bg)',
             border: '1px solid var(--color-border)',
             minWidth: '260px',
